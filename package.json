@@ -7,12 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:ts": "npx tsc --noEmit",
     "migrate": "dbmate -e DATABASE_URL -s ./db/schema.sql",
     "queries": "pgtyped --config pgtyped.json --uri $DATABASE_URL && prettier --write './src/store/**/*.ts'"
   },
   "dependencies": {
     "@pgtyped/runtime": "^2.3.0",
+    "envobj": "^2.0.2",
     "next": "15.1.6",
+    "pg": "^8.13.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -20,6 +23,7 @@
     "@eslint/eslintrc": "^3",
     "@pgtyped/cli": "^2.3.0",
     "@types/node": "^20",
+    "@types/pg": "^8.11.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dbmate": "^2.25.0",

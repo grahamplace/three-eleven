@@ -1,0 +1,26 @@
+export type ServiceRequest = {
+  service_request_id: number;
+  requested_datetime: Date;
+  closed_date: Date | null;
+  updated_datetime: Date | null;
+  status_description: string | null;
+  status_notes: string | null;
+  agency_responsible: string | null;
+  service_name: string | null;
+  service_subtype: string | null;
+  service_details: string | null;
+  address: string | null;
+  street: string | null;
+  supervisor_district: number | null;
+  neighborhoods_sffind_boundaries: string | null;
+  analysis_neighborhood: string | null;
+  police_district: string | null;
+  source: string | null;
+  data_as_of: Date | null;
+  data_loaded_at: Date | null;
+  lat: number | null;
+  long: number | null;
+  media_url: string | null;
+  created_at: Date | null;
+  updated_at: Date | null;
+};
