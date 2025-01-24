@@ -1,0 +1,20 @@
+{
+    "transforms": [
+      {
+        "mode": "sql",
+        "include": "./queries/**/*.sql",
+        "emitTemplate": "{{dir}}/{{name}}.queries.ts"
+      }
+    ],
+    "typesOverrides": {
+      "int8": {
+        "parameter": "bigint",
+        "return": "string"
+      },
+      "geometry": {
+        "parameter": "string",
+        "return": "string"
+      }
+    },
+    "srcDir": "./src/store/"
+  }
