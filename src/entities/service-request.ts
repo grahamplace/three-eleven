@@ -1,5 +1,5 @@
 export type ServiceRequest = {
-  service_request_id: number;
+  service_request_id: bigint;
   requested_datetime: Date;
   closed_date: Date | null;
   updated_datetime: Date | null;

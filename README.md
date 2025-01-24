@@ -10,6 +10,7 @@
 ```
 npm install
 npm run migrate up
+npm run seed-db
 npm run development
 ```
 
