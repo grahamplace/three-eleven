@@ -2,6 +2,7 @@ name: Main
 on:
   push:
     branches: [main]
+# TODO: Vercel deployment from here as well, rather than using Vercel Github integration. That way if migrate fails, we don't deploy code.
 jobs:
   migrate:
     concurrency: migrate-production
