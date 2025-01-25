@@ -1,0 +1,22 @@
+name: Main
+on:
+  push:
+    branches: [main]
+jobs:
+  migrate:
+    concurrency: migrate-production
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - name: Install dbmate
+        run: sudo curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/download/v2.15.0/dbmate-linux-amd64 && sudo chmod +x /usr/local/bin/dbmate
+      - name: Migrate
+        run: dbmate -e DATABASE_URL up
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
