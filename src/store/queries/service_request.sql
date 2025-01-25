@@ -1,3 +1,6 @@
+/* @name GetLatestUpdatedDatetime */
+SELECT COALESCE(MAX(updated_datetime), '1970-01-01') as updated_datetime FROM service_requests;
+
 /* @name FindServiceRequestById */
 SELECT * FROM service_requests WHERE service_request_id = :service_request_id;
 

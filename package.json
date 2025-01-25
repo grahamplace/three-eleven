@@ -10,11 +10,14 @@
     "lint:ts": "npx tsc --noEmit",
     "migrate": "dbmate -e DATABASE_URL -s ./db/schema.sql",
     "queries": "pgtyped --config pgtyped.json --uri $DATABASE_URL && prettier --write './src/store/**/*.ts'",
-    "seed-db": "npx tsx scripts/seed-db.ts"
+    "seed-db": "npx tsx scripts/seed-db.ts",
+    "scrape": "npx tsx scripts/scrape-data.ts",
+    "inngest": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest"
   },
   "dependencies": {
     "@pgtyped/runtime": "^2.3.0",
     "envobj": "^2.0.2",
+    "inngest": "^3.30.0",
     "next": "15.1.6",
     "pg": "^8.13.1",
     "react": "^19.0.0",
@@ -33,6 +36,7 @@
     "postcss": "^8",
     "prettier": "^3.4.2",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }
 }

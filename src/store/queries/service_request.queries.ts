@@ -3,11 +3,41 @@ import { PreparedQuery } from "@pgtyped/runtime";
 
 export type DateOrString = Date | string;
 
-export type NumberOrString = number | string;
+/** 'GetLatestUpdatedDatetime' parameters type */
+export type IGetLatestUpdatedDatetimeParams = void;
+
+/** 'GetLatestUpdatedDatetime' return type */
+export interface IGetLatestUpdatedDatetimeResult {
+  updated_datetime: Date | null;
+}
+
+/** 'GetLatestUpdatedDatetime' query type */
+export interface IGetLatestUpdatedDatetimeQuery {
+  params: IGetLatestUpdatedDatetimeParams;
+  result: IGetLatestUpdatedDatetimeResult;
+}
+
+const getLatestUpdatedDatetimeIR: any = {
+  usedParamSet: {},
+  params: [],
+  statement:
+    "SELECT COALESCE(MAX(updated_datetime), '1970-01-01') as updated_datetime FROM service_requests",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT COALESCE(MAX(updated_datetime), '1970-01-01') as updated_datetime FROM service_requests
+ * ```
+ */
+export const getLatestUpdatedDatetime = new PreparedQuery<
+  IGetLatestUpdatedDatetimeParams,
+  IGetLatestUpdatedDatetimeResult
+>(getLatestUpdatedDatetimeIR);
 
 /** 'FindServiceRequestById' parameters type */
 export interface IFindServiceRequestByIdParams {
-  service_request_id?: bigint | null | void;
+  service_request_id?: string | null | void;
 }
 
 /** 'FindServiceRequestById' return type */
@@ -19,8 +49,8 @@ export interface IFindServiceRequestByIdResult {
   created_at: Date | null;
   data_as_of: Date | null;
   data_loaded_at: Date | null;
-  geom: string | null;
   lat: number | null;
+  latlon: string | null;
   long: number | null;
   media_url: string | null;
   neighborhoods_sffind_boundaries: string | null;
@@ -34,7 +64,7 @@ export interface IFindServiceRequestByIdResult {
   status_description: string | null;
   status_notes: string | null;
   street: string | null;
-  supervisor_district: string | null;
+  supervisor_district: number | null;
   updated_at: Date | null;
   updated_datetime: Date | null;
 }
@@ -73,7 +103,7 @@ export const findServiceRequestById = new PreparedQuery<
 /** 'CreateServiceRequests' parameters type */
 export interface ICreateServiceRequestsParams {
   requests: readonly {
-    service_request_id: bigint | null | void;
+    service_request_id: string | null | void;
     requested_datetime: DateOrString | null | void;
     closed_date: DateOrString | null | void;
     updated_datetime: DateOrString | null | void;
@@ -85,7 +115,7 @@ export interface ICreateServiceRequestsParams {
     service_details: string | null | void;
     address: string | null | void;
     street: string | null | void;
-    supervisor_district: NumberOrString | null | void;
+    supervisor_district: number | null | void;
     neighborhoods_sffind_boundaries: string | null | void;
     analysis_neighborhood: string | null | void;
     police_district: string | null | void;

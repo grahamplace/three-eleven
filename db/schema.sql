@@ -55,28 +55,28 @@ CREATE TABLE public.schema_migrations (
 --
 
 CREATE TABLE public.service_requests (
-    service_request_id bigint NOT NULL,
+    service_request_id text NOT NULL,
     requested_datetime timestamp without time zone NOT NULL,
     closed_date timestamp without time zone,
     updated_datetime timestamp without time zone,
-    status_description character varying(255),
+    status_description text,
     status_notes text,
-    agency_responsible character varying(255),
-    service_name character varying(255),
-    service_subtype character varying(255),
+    agency_responsible text,
+    service_name text,
+    service_subtype text,
     service_details text,
     address text,
-    street character varying(255),
-    supervisor_district numeric,
-    neighborhoods_sffind_boundaries character varying(255),
-    analysis_neighborhood character varying(255),
-    police_district character varying(255),
-    source character varying(255),
+    street text,
+    supervisor_district integer,
+    neighborhoods_sffind_boundaries text,
+    analysis_neighborhood text,
+    police_district text,
+    source text,
     data_as_of timestamp without time zone,
     data_loaded_at timestamp without time zone,
     lat double precision,
     long double precision,
-    geom public.geometry(Point,4326),
+    latlon public.geometry(Point,4326) GENERATED ALWAYS AS (public.st_setsrid(public.st_makepoint(long, lat), 4326)) STORED,
     media_url text,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now()
@@ -97,6 +97,20 @@ ALTER TABLE ONLY public.schema_migrations
 
 ALTER TABLE ONLY public.service_requests
     ADD CONSTRAINT service_requests_pkey PRIMARY KEY (service_request_id);
+
+
+--
+-- Name: idx_service_requests_latlon; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_service_requests_latlon ON public.service_requests USING gist (latlon);
+
+
+--
+-- Name: idx_service_requests_updated_datetime; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_service_requests_updated_datetime ON public.service_requests USING btree (updated_datetime);
 
 
 --

@@ -7,10 +7,6 @@
       }
     ],
     "typesOverrides": {
-      "int8": {
-        "parameter": "bigint",
-        "return": "string"
-      },
       "geometry": {
         "parameter": "string",
         "return": "string"

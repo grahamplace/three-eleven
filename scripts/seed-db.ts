@@ -10,7 +10,7 @@ async function testServiceRequestUpsert() {
   console.info("Running testServiceRequestUpsert");
   const exampleRequests = [
     {
-      service_request_id: BigInt("3827464"),
+      service_request_id: "3827464",
       requested_datetime: new Date("2024-03-15T10:30:00Z"),
       closed_date: null,
       updated_datetime: new Date("2024-03-15T10:30:00Z"),
@@ -34,7 +34,7 @@ async function testServiceRequestUpsert() {
       media_url: "https://example.com/image1.jpg",
     },
     {
-      service_request_id: BigInt("3827478"),
+      service_request_id: "3827478",
       requested_datetime: new Date("2024-03-15T11:00:00Z"),
       closed_date: new Date("2024-03-15T14:00:00Z"),
       updated_datetime: new Date("2024-03-15T14:00:00Z"),
