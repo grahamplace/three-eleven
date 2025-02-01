@@ -20,6 +20,23 @@ export const find = async (serviceRequesId: string) => {
   return firstEntity(results, storeToEntity);
 };
 
+export const findByDateAndType = async (
+  dateStart: string,
+  dateEnd: string,
+  serviceSubtype: string[]
+) => {
+  console.log("store: finding service request by date and type");
+  const results = await queries.findServiceRequestByDateAndType.run(
+    {
+      date_start: dateStart,
+      date_end: dateEnd,
+      service_subtype: serviceSubtype,
+    },
+    db
+  );
+  return results.map(storeToEntity);
+};
+
 export const createMany = async (
   serviceRequests: Omit<ServiceRequest, "created_at" | "updated_at">[]
 ) => {

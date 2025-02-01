@@ -4,6 +4,12 @@ SELECT COALESCE(MAX(updated_datetime), '1970-01-01') as updated_datetime FROM se
 /* @name FindServiceRequestById */
 SELECT * FROM service_requests WHERE service_request_id = :service_request_id;
 
+/* @name FindServiceRequestByDateAndType */
+SELECT * 
+  FROM service_requests 
+ WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
+   AND service_subtype = ANY(:service_subtype);
+
 /* @name CreateServiceRequests
    @param requests -> ((
      service_request_id,
