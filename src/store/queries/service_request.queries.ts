@@ -3,6 +3,8 @@ import { PreparedQuery } from "@pgtyped/runtime";
 
 export type DateOrString = Date | string;
 
+export type stringArray = string[];
+
 /** 'GetLatestUpdatedDatetime' parameters type */
 export type IGetLatestUpdatedDatetimeParams = void;
 
@@ -99,6 +101,88 @@ export const findServiceRequestById = new PreparedQuery<
   IFindServiceRequestByIdParams,
   IFindServiceRequestByIdResult
 >(findServiceRequestByIdIR);
+
+/** 'FindServiceRequestByDateAndType' parameters type */
+export interface IFindServiceRequestByDateAndTypeParams {
+  date_end?: DateOrString | null | void;
+  date_start?: DateOrString | null | void;
+  service_subtype?: stringArray | null | void;
+}
+
+/** 'FindServiceRequestByDateAndType' return type */
+export interface IFindServiceRequestByDateAndTypeResult {
+  address: string | null;
+  agency_responsible: string | null;
+  analysis_neighborhood: string | null;
+  closed_date: Date | null;
+  created_at: Date | null;
+  data_as_of: Date | null;
+  data_loaded_at: Date | null;
+  lat: number | null;
+  latlon: string | null;
+  long: number | null;
+  media_url: string | null;
+  neighborhoods_sffind_boundaries: string | null;
+  police_district: string | null;
+  requested_datetime: Date;
+  service_details: string | null;
+  service_name: string | null;
+  service_request_id: string;
+  service_subtype: string | null;
+  source: string | null;
+  status_description: string | null;
+  status_notes: string | null;
+  street: string | null;
+  supervisor_district: number | null;
+  updated_at: Date | null;
+  updated_datetime: Date | null;
+}
+
+/** 'FindServiceRequestByDateAndType' query type */
+export interface IFindServiceRequestByDateAndTypeQuery {
+  params: IFindServiceRequestByDateAndTypeParams;
+  result: IFindServiceRequestByDateAndTypeResult;
+}
+
+const findServiceRequestByDateAndTypeIR: any = {
+  usedParamSet: { date_start: true, date_end: true, service_subtype: true },
+  params: [
+    {
+      name: "date_start",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 75, b: 85 }],
+    },
+    {
+      name: "date_end",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 91, b: 99 }],
+    },
+    {
+      name: "service_subtype",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 130, b: 145 }],
+    },
+  ],
+  statement:
+    "SELECT * \n  FROM service_requests \n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end\n   AND service_subtype = ANY(:service_subtype)",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT *
+ *   FROM service_requests
+ *  WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
+ *    AND service_subtype = ANY(:service_subtype)
+ * ```
+ */
+export const findServiceRequestByDateAndType = new PreparedQuery<
+  IFindServiceRequestByDateAndTypeParams,
+  IFindServiceRequestByDateAndTypeResult
+>(findServiceRequestByDateAndTypeIR);
 
 /** 'CreateServiceRequests' parameters type */
 export interface ICreateServiceRequestsParams {
