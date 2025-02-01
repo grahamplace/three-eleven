@@ -1,7 +1,7 @@
 import Map from "./Map";
 import { envobj, string } from "envobj";
 
-export const env = envobj(
+const env = envobj(
   {
     MAPBOX_ACCESS_TOKEN: string,
   },
