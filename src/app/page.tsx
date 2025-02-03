@@ -10,8 +10,8 @@ const env = envobj(
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <main>
+    <div className="min-h-screen w-[100vw] flex items-center justify-center">
+      <main className="w-full h-full">
         <Map token={env.MAPBOX_ACCESS_TOKEN} />
       </main>
     </div>
