@@ -1,18 +1,25 @@
 "use server";
 
-import { findByDateAndType } from "@/store/service-request";
+import { ServiceRequest } from "@/entities";
+import { findByDateAndType, find } from "@/store/service-request";
 import {
-  ServiceRequestDTO,
-  serviceRequestToDTO,
+  ServiceRequestDTOThin,
+  serviceRequestToDTOThin,
 } from "@/entities/data-transfer";
 
 export const getServiceRequests = async (
   dateStart: string,
   dateEnd: string,
   serviceSubtype: string[]
-): Promise<ServiceRequestDTO[]> => {
-  console.log("server: fetching service request data on server");
+): Promise<ServiceRequestDTOThin[]> => {
   const results = await findByDateAndType(dateStart, dateEnd, serviceSubtype);
-  const dtos = results.map(serviceRequestToDTO);
+  const dtos = results.map(serviceRequestToDTOThin);
   return dtos;
+};
+
+export const getServiceRequestById = async (
+  id: string
+): Promise<ServiceRequest | null> => {
+  const result = await find(id);
+  return result;
 };

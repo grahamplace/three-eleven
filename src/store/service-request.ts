@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import * as queries from "@/store/queries/service_request.queries";
 import { ServiceRequest } from "@/entities";
 import { firstEntity } from "./util";
+import { supportedMediaDomains } from "@/lib/config";
 
 export const getLatestUpdatedDatetime = async () => {
   const results = await queries.getLatestUpdatedDatetime.run(undefined, db);
@@ -25,7 +26,6 @@ export const findByDateAndType = async (
   dateEnd: string,
   serviceSubtype: string[]
 ) => {
-  console.log("store: finding service request by date and type");
   const results = await queries.findServiceRequestByDateAndType.run(
     {
       date_start: dateStart,
@@ -82,5 +82,23 @@ function storeToEntity(
 ): ServiceRequest {
   return {
     ...result,
+    // Only some of the media urls in the dataset actually work, so null out anything else here
+    media_url: isSupportedMediaUrl(result.media_url) ? result.media_url : null,
   };
+}
+
+function isSupportedMediaUrl(url: string | null) {
+  if (url === null) {
+    return false;
+  }
+
+  try {
+    const domain = new URL(url).hostname;
+    return supportedMediaDomains.some((supportedDomain) =>
+      domain.endsWith(supportedDomain)
+    );
+  } catch (error) {
+    console.error("Error checking if media url is supported:", error);
+    return false;
+  }
 }
