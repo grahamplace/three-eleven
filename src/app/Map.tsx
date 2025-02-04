@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Map, { Source, Layer, useMap, MapProvider } from "react-map-gl";
+import Map, {
+  Source,
+  Layer,
+  useMap,
+  MapProvider,
+  MapMouseEvent,
+  MapTouchEvent,
+} from "react-map-gl";
 import {
   getServiceRequests,
   getServiceRequestById,
@@ -72,6 +79,26 @@ function MapContent({ token }: { token: string }) {
     })),
   };
 
+  const handleMapInteraction = (event: MapMouseEvent | MapTouchEvent) => {
+    if (!event.features?.length) {
+      setSelectedRequest(null);
+      return;
+    }
+
+    const feature = event.features[0];
+    const longitude = event.lngLat.lng;
+    const latitude = event.lngLat.lat;
+    setSelectedRequest({
+      longitude: longitude,
+      latitude: latitude,
+      serviceRequestId: feature.properties?.serviceRequestId || "",
+    });
+    map?.flyTo({
+      center: [longitude, latitude],
+      duration: 500,
+    });
+  };
+
   return (
     <div className="h-full w-full flex flex-row">
       <div className={"w-2/3"}>
@@ -84,26 +111,9 @@ function MapContent({ token }: { token: string }) {
             zoom: 11.5,
           }}
           style={{ height: "100vh" }}
-          mapStyle="mapbox://styles/mapbox/dark-v11"
-          onClick={(event) => {
-            if (!event.features?.length) {
-              setSelectedRequest(null);
-              return;
-            }
-
-            const feature = event.features[0];
-            const longitude = event.lngLat.lng;
-            const latitude = event.lngLat.lat;
-            setSelectedRequest({
-              longitude: longitude,
-              latitude: latitude,
-              serviceRequestId: feature.properties?.serviceRequestId || "",
-            });
-            map?.flyTo({
-              center: [longitude, latitude],
-              duration: 500,
-            });
-          }}
+          mapStyle="mapbox://styles/mapbox/dark-v11" // TODO: allow dark mode toggle
+          onClick={handleMapInteraction}
+          onTouchEnd={handleMapInteraction}
           interactiveLayerIds={["point-layer"]}
         >
           <Source type="geojson" data={geojson}>
@@ -143,11 +153,7 @@ function MapContent({ token }: { token: string }) {
                   type: "exponential",
                   stops: [
                     [14, 1],
-                    [15, 0.8],
-                    [16, 0.6],
-                    [17, 0.4],
-                    [18, 0.2],
-                    [20, 0],
+                    [16, 0.0],
                   ],
                 },
               }}
@@ -155,7 +161,7 @@ function MapContent({ token }: { token: string }) {
             <Layer
               id="point-layer"
               type="circle"
-              minzoom={15}
+              minzoom={14}
               paint={{
                 "circle-radius": [
                   "case",
@@ -165,7 +171,7 @@ function MapContent({ token }: { token: string }) {
                     selectedRequest?.serviceRequestId || "",
                   ],
                   8,
-                  5,
+                  4,
                 ],
                 "circle-color": [
                   "case",
@@ -188,7 +194,20 @@ function MapContent({ token }: { token: string }) {
                   2, // thicker stroke for selected point
                   1, // default stroke width
                 ],
-                "circle-opacity": 1,
+                "circle-opacity": {
+                  type: "exponential",
+                  stops: [
+                    [14, 0.1],
+                    [16, 1],
+                  ],
+                },
+                "circle-stroke-opacity": {
+                  type: "exponential",
+                  stops: [
+                    [14, 0.1],
+                    [16, 1],
+                  ],
+                },
               }}
             />
           </Source>
