@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import * as queries from "@/store/queries/service_request.queries";
 import { ServiceRequest } from "@/entities";
-import { firstEntity } from "./util";
+import { firstEntity } from "./utils";
 import { supportedMediaDomains } from "@/lib/config";
 
 export const getLatestUpdatedDatetime = async () => {

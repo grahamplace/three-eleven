@@ -1,14 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Map, { Source, Layer, useMap, MapProvider } from "react-map-gl";
+import Map, {
+  Source,
+  Layer,
+  useMap,
+  MapProvider,
+  MapMouseEvent,
+  MapTouchEvent,
+} from "react-map-gl";
 import {
   getServiceRequests,
   getServiceRequestById,
 } from "@/lib/actions/service-requests";
-import Image from "next/image";
 import { ServiceRequest } from "@/entities";
-import { XMarkIcon } from "@heroicons/react/24/solid";
+import ServiceRequestDetail from "./ServiceRequestDetail";
+import { ServiceRequestDTOThin } from "@/entities/data-transfer";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 export default function MapComponent({ token }: { token: string }) {
   return (
@@ -19,14 +27,12 @@ export default function MapComponent({ token }: { token: string }) {
 }
 
 function MapContent({ token }: { token: string }) {
-  const [points, setPoints] = useState<any[]>([]);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const [points, setPoints] = useState<ServiceRequestDTOThin[]>([]);
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
-  const [selectedRequest, setSelectedRequest] = useState<{
-    longitude: number;
-    latitude: number;
-    serviceRequestId: string;
-  } | null>(null);
+  const [selectedRequest, setSelectedRequest] =
+    useState<ServiceRequestDTOThin | null>(null);
 
   const { map } = useMap();
 
@@ -63,7 +69,7 @@ function MapContent({ token }: { token: string }) {
       type: "Feature",
       properties: {
         weight: point.weight,
-        serviceRequestId: point.service_request_id,
+        serviceRequestId: point.serviceRequestId,
       },
       geometry: {
         type: "Point",
@@ -72,9 +78,30 @@ function MapContent({ token }: { token: string }) {
     })),
   };
 
+  const handleMapInteraction = (event: MapMouseEvent | MapTouchEvent) => {
+    if (!event.features?.length) {
+      setSelectedRequest(null);
+      return;
+    }
+
+    const feature = event.features[0];
+    const longitude = event.lngLat.lng;
+    const latitude = event.lngLat.lat;
+    setSelectedRequest({
+      longitude: longitude,
+      latitude: latitude,
+      serviceRequestId: feature.properties?.serviceRequestId || "",
+      weight: 1,
+    });
+    map?.flyTo({
+      center: [longitude, latitude],
+      duration: 500,
+    });
+  };
+
   return (
     <div className="h-full w-full flex flex-row">
-      <div className={"w-2/3"}>
+      <div className={isDesktop ? "w-2/3" : "w-full"}>
         <Map
           id="map"
           mapboxAccessToken={token}
@@ -84,26 +111,9 @@ function MapContent({ token }: { token: string }) {
             zoom: 11.5,
           }}
           style={{ height: "100vh" }}
-          mapStyle="mapbox://styles/mapbox/dark-v11"
-          onClick={(event) => {
-            if (!event.features?.length) {
-              setSelectedRequest(null);
-              return;
-            }
-
-            const feature = event.features[0];
-            const longitude = event.lngLat.lng;
-            const latitude = event.lngLat.lat;
-            setSelectedRequest({
-              longitude: longitude,
-              latitude: latitude,
-              serviceRequestId: feature.properties?.serviceRequestId || "",
-            });
-            map?.flyTo({
-              center: [longitude, latitude],
-              duration: 500,
-            });
-          }}
+          mapStyle="mapbox://styles/mapbox/dark-v11" // TODO: allow dark mode toggle
+          onClick={handleMapInteraction}
+          onTouchEnd={handleMapInteraction}
           interactiveLayerIds={["point-layer"]}
         >
           <Source type="geojson" data={geojson}>
@@ -143,11 +153,7 @@ function MapContent({ token }: { token: string }) {
                   type: "exponential",
                   stops: [
                     [14, 1],
-                    [15, 0.8],
-                    [16, 0.6],
-                    [17, 0.4],
-                    [18, 0.2],
-                    [20, 0],
+                    [16, 0.0],
                   ],
                 },
               }}
@@ -155,7 +161,7 @@ function MapContent({ token }: { token: string }) {
             <Layer
               id="point-layer"
               type="circle"
-              minzoom={15}
+              minzoom={14}
               paint={{
                 "circle-radius": [
                   "case",
@@ -165,7 +171,7 @@ function MapContent({ token }: { token: string }) {
                     selectedRequest?.serviceRequestId || "",
                   ],
                   8,
-                  5,
+                  4,
                 ],
                 "circle-color": [
                   "case",
@@ -188,51 +194,31 @@ function MapContent({ token }: { token: string }) {
                   2, // thicker stroke for selected point
                   1, // default stroke width
                 ],
-                "circle-opacity": 1,
+                "circle-opacity": {
+                  type: "exponential",
+                  stops: [
+                    [14, 0.1],
+                    [16, 1],
+                  ],
+                },
+                "circle-stroke-opacity": {
+                  type: "exponential",
+                  stops: [
+                    [14, 0.1],
+                    [16, 1],
+                  ],
+                },
               }}
             />
           </Source>
         </Map>
       </div>
 
-      <div className="w-1/3 h-screen bg-white/95 dark:bg-gray-800/95 shadow-lg p-6 overflow-y-auto z-10">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold dark:text-white">
-            Service Request Details
-          </h2>
-          <button
-            onClick={() => setSelectedRequest(null)}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <XMarkIcon className="w-6 h-6" />
-          </button>
-        </div>
-
-        {selectedRequest && (
-          <div className="space-y-4">
-            {selectedRequestData ? (
-              <div className="flex flex-col gap-4">
-                <pre className="whitespace-pre-wrap overflow-x-auto bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-sm">
-                  {JSON.stringify(selectedRequestData, null, 2)}
-                </pre>
-                {selectedRequestData.media_url && (
-                  <div className="relative w-full h-64">
-                    <Image
-                      src={selectedRequestData.media_url}
-                      alt="Service Request Image"
-                      fill
-                      className="rounded-lg object-contain"
-                      sizes="33vw"
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-gray-500 dark:text-gray-400">Loading...</div>
-            )}
-          </div>
-        )}
-      </div>
+      <ServiceRequestDetail
+        selectedRequest={selectedRequest}
+        selectedRequestData={selectedRequestData}
+        setSelectedRequest={setSelectedRequest}
+      />
     </div>
   );
 }
