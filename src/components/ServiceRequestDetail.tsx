@@ -5,17 +5,24 @@ import { ServiceRequest } from "@/entities";
 import { ServiceRequestDTOThin } from "@/entities/data-transfer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LayerToggle } from "@/components/LayerToggle";
+import { MapLayers } from "@/components/LayerToggle";
 
 interface ServiceRequestDrawerProps {
   selectedRequest: ServiceRequestDTOThin | null;
   selectedRequestData: ServiceRequest | null;
   setSelectedRequest: (request: ServiceRequestDTOThin | null) => void;
+  visibleLayers: MapLayers;
+  setVisibleLayers: (layers: MapLayers) => void;
+  children: React.ReactNode;
 }
 
 export default function ServiceRequestDetail({
   selectedRequest,
   selectedRequestData,
   setSelectedRequest,
+  visibleLayers,
+  setVisibleLayers,
 }: ServiceRequestDrawerProps) {
   const isOpen = Boolean(selectedRequest);
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -48,47 +55,55 @@ export default function ServiceRequestDetail({
   );
 
   if (isDesktop) {
-    if (!isOpen) return null;
-
     return (
-      <div className="fixed right-0 top-0 w-1/3 h-screen bg-background/95 border-l border-border shadow-lg overflow-y-auto z-10 transition-colors duration-200">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold transition-colors duration-200">
-              Service Request Details
-            </h2>
-            <div className="flex items-center gap-2">
+      <>
+        <div className="fixed right-0 top-0 w-1/3 h-16 bg-background/95 border-l border-b border-border z-20 transition-colors duration-200">
+          <div className="p-4 flex justify-between items-center">
+            {isOpen && (
+              <h2 className="text-lg font-semibold">Service Request Details</h2>
+            )}
+            <div className="flex items-center gap-2 ml-auto">
+              <LayerToggle layers={visibleLayers} onChange={setVisibleLayers} />
               <ThemeToggle />
-              <button
-                onClick={() => setSelectedRequest(null)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
+              {isOpen && (
+                <button
+                  onClick={() => setSelectedRequest(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              )}
             </div>
           </div>
-          {content}
         </div>
-      </div>
+        {isOpen && (
+          <div className="fixed right-0 top-16 w-1/3 h-[calc(100vh-64px)] bg-background/95 border-l border-border shadow-lg overflow-y-auto z-10 transition-colors duration-200">
+            <div className="p-6 pt-2">{content}</div>
+          </div>
+        )}
+      </>
     );
   }
 
   return (
-    <Drawer
-      open={isOpen}
-      onOpenChange={(open) => !open && setSelectedRequest(null)}
-    >
-      <DrawerContent>
-        <DrawerHeader className="flex justify-between items-center">
-          <DrawerTitle className="transition-colors duration-200">
-            Service Request Details
-          </DrawerTitle>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-          </div>
-        </DrawerHeader>
-        {selectedRequest && content}
-      </DrawerContent>
-    </Drawer>
+    <>
+      <div className="fixed right-4 top-4 z-50 flex items-center gap-2 bg-background/95 p-2 rounded-lg border border-border shadow-lg">
+        <LayerToggle layers={visibleLayers} onChange={setVisibleLayers} />
+        <ThemeToggle />
+      </div>
+      <Drawer
+        open={isOpen}
+        onOpenChange={(open) => !open && setSelectedRequest(null)}
+      >
+        <DrawerContent>
+          <DrawerHeader className="flex justify-between items-center">
+            <DrawerTitle className="transition-colors duration-200">
+              Service Request Details
+            </DrawerTitle>
+          </DrawerHeader>
+          {selectedRequest && content}
+        </DrawerContent>
+      </Drawer>
+    </>
   );
 }
