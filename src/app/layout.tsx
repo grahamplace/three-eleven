@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 
-export const metadata: Metadata = {};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -11,6 +9,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <Favicon />
+      </head>
       <body className="overflow-hidden">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
@@ -18,4 +19,24 @@ export default function RootLayout({
       </body>
     </html>
   );
+}
+
+function Favicon() {
+  return (
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>"
+    />
+  );
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Three Eleven",
+    description: "San Francisco 311 Data Explorer",
+    openGraph: {
+      title: "Three Eleven",
+      description: "San Francisco 311 Data Explorer",
+    },
+  };
 }
