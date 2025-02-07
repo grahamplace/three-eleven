@@ -59,6 +59,9 @@ function MapContent({ token }: { token: string }) {
     hexagons: true,
   });
 
+  // Add new state for zoom level
+  const [zoom, setZoom] = useState(11.5);
+
   useEffect(() => {
     const fetchData = async () => {
       const data = await getServiceRequests("2024-01-01", "2024-12-31", [
@@ -110,10 +113,13 @@ function MapContent({ token }: { token: string }) {
         east: bounds?.getEast() || 0,
         west: bounds?.getWest() || 0,
       });
+      // Update zoom level
+      setZoom(map.getZoom());
     }
   }, [map]);
 
-  const hexagonData = binPointsToHexagons(points, mapBounds);
+  // Pass zoom to hexagonData calculation
+  const hexagonData = binPointsToHexagons(points, mapBounds, zoom);
 
   const handleMapInteraction = (event: MapMouseEvent | MapTouchEvent) => {
     if (!event.features?.length) {
@@ -166,7 +172,7 @@ function MapContent({ token }: { token: string }) {
                     ["linear"],
                     ["get", "count"],
                     0,
-                    "rgba(33,102,172,0.1)", // Light color for empty hexagons
+                    "rgba(33,102,172,0.0)", // Light color for empty hexagons
                     10,
                     "rgb(103,169,207)",
                     20,
@@ -178,7 +184,7 @@ function MapContent({ token }: { token: string }) {
                     50,
                     "rgb(178,24,43)",
                   ],
-                  "fill-opacity": 0.6,
+                  "fill-opacity": 0.5,
                 }}
               />
               <Layer
@@ -187,7 +193,7 @@ function MapContent({ token }: { token: string }) {
                 paint={{
                   "line-color": theme === "dark" ? "white" : "gray",
                   "line-width": 1,
-                  "line-opacity": 0.5,
+                  "line-opacity": 0.1,
                 }}
               />
             </Source>

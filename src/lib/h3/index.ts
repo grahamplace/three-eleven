@@ -96,8 +96,21 @@ function getSFHexagonGrid(resolution: number): string[] {
 export function binPointsToHexagons(
   points: ServiceRequestDTOThin[],
   mapBounds: { north: number; south: number; east: number; west: number },
-  resolution: number = 9
+  zoom: number
 ): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
+  // Convert zoom level to appropriate H3 resolution
+  // H3 resolutions: 0 (largest) to 15 (smallest)
+  // Mapbox zoom levels: 0 (furthest) to 22 (closest)
+  const getResolutionFromZoom = (zoom: number): number => {
+    if (zoom < 9) return 7;
+    if (zoom < 11) return 8;
+    if (zoom < 13) return 9;
+    if (zoom < 15) return 10;
+    return 11;
+  };
+
+  const resolution = getResolutionFromZoom(zoom);
+
   // Get the static SF hexagon grid
   const allHexagons = getSFHexagonGrid(resolution);
 
