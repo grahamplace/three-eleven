@@ -57,7 +57,7 @@ export default function ServiceRequestDetail({
   if (isDesktop) {
     return (
       <>
-        <div className="fixed right-0 top-0 w-1/3 h-16 bg-background/95 border-l border-b border-border z-20 transition-colors duration-200">
+        <div className="fixed right-0 top-0 w-1/3 h-16 bg-background/95 border-b border-border z-20 transition-colors duration-200">
           <div className="p-4 flex justify-between items-center">
             {isOpen && (
               <h2 className="text-lg font-semibold">Service Request Details</h2>
