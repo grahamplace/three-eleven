@@ -17,6 +17,7 @@ import { ServiceRequest } from "@/entities";
 import ServiceRequestDetail from "./ServiceRequestDetail";
 import { ServiceRequestDTOThin } from "@/entities/data-transfer";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useTheme } from "next-themes";
 
 export default function MapComponent({ token }: { token: string }) {
   return (
@@ -28,6 +29,7 @@ export default function MapComponent({ token }: { token: string }) {
 
 function MapContent({ token }: { token: string }) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const { theme } = useTheme();
   const [points, setPoints] = useState<ServiceRequestDTOThin[]>([]);
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
@@ -111,7 +113,7 @@ function MapContent({ token }: { token: string }) {
             zoom: 11.5,
           }}
           style={{ height: "100vh" }}
-          mapStyle="mapbox://styles/mapbox/dark-v11" // TODO: allow dark mode toggle
+          mapStyle={`mapbox://styles/mapbox/${theme === "dark" ? "dark" : "light"}-v11`}
           onClick={handleMapInteraction}
           onTouchEnd={handleMapInteraction}
           interactiveLayerIds={["point-layer"]}
@@ -183,7 +185,7 @@ function MapContent({ token }: { token: string }) {
                   "#00ff00", // bright green for selected point
                   "transparent", // default color for unselected points
                 ],
-                "circle-stroke-color": "white",
+                "circle-stroke-color": theme === "dark" ? "white" : "gray",
                 "circle-stroke-width": [
                   "case",
                   [
