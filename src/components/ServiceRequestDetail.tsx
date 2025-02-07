@@ -26,7 +26,7 @@ export default function ServiceRequestDetail({
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const content = (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 min-h-[calc(100vh-150px)] max-h-[calc(100vh-150px)] overflow-y-auto">
       {selectedRequestData ? (
         <div className="flex flex-col gap-4">
           <pre className="whitespace-pre-wrap overflow-x-auto bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-sm">
@@ -79,9 +79,9 @@ export default function ServiceRequestDetail({
       <DrawerContent>
         <DrawerHeader className="flex justify-between items-center">
           <DrawerTitle>Service Request Details</DrawerTitle>
-          <DrawerClose className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+          {/* <DrawerClose className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
             <XMarkIcon className="w-6 h-6" />
-          </DrawerClose>
+          </DrawerClose> */}
         </DrawerHeader>
         {selectedRequest && content}
       </DrawerContent>
