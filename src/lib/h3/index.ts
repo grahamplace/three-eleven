@@ -145,8 +145,6 @@ export function binPointsToHexagons(
   mapBounds: { north: number; south: number; east: number; west: number },
   zoom: number
 ): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
-  // MUSTFIX: remove
-  console.log("binPointsToHexagons", points, mapBounds, zoom);
   // Convert zoom level to appropriate H3 resolution
   // H3 resolutions: 0 (largest) to 15 (smallest)
   // Mapbox zoom levels: 0 (furthest) to 22 (closest)
