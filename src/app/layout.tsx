@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
+import { MapProvider } from "@/contexts/MapContext";
 
 export default function RootLayout({
   children,
@@ -14,7 +15,7 @@ export default function RootLayout({
       </head>
       <body className="overflow-hidden">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <MapProvider>{children}</MapProvider>
         </ThemeProvider>
       </body>
     </html>

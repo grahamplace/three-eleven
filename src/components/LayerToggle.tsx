@@ -1,5 +1,6 @@
 import { Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { useMapContext } from "@/contexts/MapContext";
 
 export type MapLayers = {
   points: boolean;
@@ -12,7 +13,8 @@ interface LayerToggleProps {
   onChange: (layers: MapLayers) => void;
 }
 
-export function LayerToggle({ layers, onChange }: LayerToggleProps) {
+export function LayerToggle() {
+  const { visibleLayers, setVisibleLayers } = useMapContext();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -31,9 +33,12 @@ export function LayerToggle({ layers, onChange }: LayerToggleProps) {
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
-                checked={layers.points}
+                checked={visibleLayers.points}
                 onChange={(e) =>
-                  onChange({ ...layers, points: e.target.checked })
+                  setVisibleLayers({
+                    ...visibleLayers,
+                    points: e.target.checked,
+                  })
                 }
                 className="rounded border-gray-300 dark:border-gray-700"
               />
@@ -42,9 +47,12 @@ export function LayerToggle({ layers, onChange }: LayerToggleProps) {
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
-                checked={layers.heatmap}
+                checked={visibleLayers.heatmap}
                 onChange={(e) =>
-                  onChange({ ...layers, heatmap: e.target.checked })
+                  setVisibleLayers({
+                    ...visibleLayers,
+                    heatmap: e.target.checked,
+                  })
                 }
                 className="rounded border-gray-300 dark:border-gray-700"
               />
@@ -53,9 +61,12 @@ export function LayerToggle({ layers, onChange }: LayerToggleProps) {
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
-                checked={layers.hexagons}
+                checked={visibleLayers.hexagons}
                 onChange={(e) =>
-                  onChange({ ...layers, hexagons: e.target.checked })
+                  setVisibleLayers({
+                    ...visibleLayers,
+                    hexagons: e.target.checked,
+                  })
                 }
                 className="rounded border-gray-300 dark:border-gray-700"
               />
