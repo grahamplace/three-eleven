@@ -160,7 +160,7 @@ function MapContent({ token }: { token: string }) {
           onMoveEnd={handleMapMove}
           onLoad={handleMapMove}
         >
-          {visibleLayers.hexagons && hexagonData && (
+          {visibleLayers.hexagons && (
             <Source type="geojson" data={hexagonData}>
               <Layer
                 id="hexagon-layer"
@@ -305,10 +305,9 @@ function MapContent({ token }: { token: string }) {
         selectedRequest={selectedRequest}
         selectedRequestData={selectedRequestData}
         setSelectedRequest={setSelectedRequest}
-        visibleLayers={visibleLayers}
       >
         <div className="flex items-center gap-2">
-          <LayerToggle layers={visibleLayers} />
+          <LayerToggle />
           <ThemeToggle />
           <button
             onClick={() => setSelectedRequest(null)}
