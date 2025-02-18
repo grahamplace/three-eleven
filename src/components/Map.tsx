@@ -20,7 +20,6 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTheme } from "next-themes";
 import { binPointsToHexagons } from "@/lib/h3";
 import { ModeToggle } from "./ModeToggle";
-import { XMarkIcon } from "@heroicons/react/24/outline";
 import { ThemeToggle } from "./ThemeToggle";
 import { useMapContext } from "@/contexts/MapContext";
 
@@ -35,7 +34,7 @@ export default function MapComponent({ token }: { token: string }) {
 function MapContent({ token }: { token: string }) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const { theme } = useTheme();
-  const { mode } = useMapContext();
+  const { mode, selectedRequestId, setSelectedRequestId } = useMapContext();
   const [points, setPoints] = useState<ServiceRequestDTOThin[]>([]);
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
@@ -52,6 +51,12 @@ function MapContent({ token }: { token: string }) {
     east: -122.346582,
     west: -122.513272,
   });
+
+  useEffect(() => {
+    if (!selectedRequestId) {
+      setSelectedRequest(null);
+    }
+  }, [selectedRequestId]);
 
   const { map } = useMap();
 
@@ -123,18 +128,23 @@ function MapContent({ token }: { token: string }) {
   const handleMapInteraction = (event: MapMouseEvent | MapTouchEvent) => {
     if (!event.features?.length) {
       setSelectedRequest(null);
+      setSelectedRequestId(null);
       return;
     }
 
     const feature = event.features[0];
     const longitude = event.lngLat.lng;
     const latitude = event.lngLat.lat;
+    const requestId = feature.properties?.serviceRequestId || "";
+
     setSelectedRequest({
       longitude: longitude,
       latitude: latitude,
-      serviceRequestId: feature.properties?.serviceRequestId || "",
+      serviceRequestId: requestId,
       weight: 1,
     });
+    setSelectedRequestId(requestId);
+
     map?.flyTo({
       center: [longitude, latitude],
       duration: 500,
@@ -317,17 +327,10 @@ function MapContent({ token }: { token: string }) {
       <ServiceRequestDetail
         selectedRequest={selectedRequest}
         selectedRequestData={selectedRequestData}
-        setSelectedRequest={setSelectedRequest}
       >
         <div className="flex items-center gap-2">
           <ModeToggle />
           <ThemeToggle />
-          <button
-            onClick={() => setSelectedRequest(null)}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200"
-          >
-            <XMarkIcon className="w-6 h-6" />
-          </button>
         </div>
       </ServiceRequestDetail>
     </div>

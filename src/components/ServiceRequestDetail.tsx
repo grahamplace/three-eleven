@@ -1,4 +1,3 @@
-import { XMarkIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "./ui/drawer";
 import { ServiceRequest } from "@/entities";
@@ -11,17 +10,15 @@ import { useMapContext } from "@/contexts/MapContext";
 interface ServiceRequestDrawerProps {
   selectedRequest: ServiceRequestDTOThin | null;
   selectedRequestData: ServiceRequest | null;
-  setSelectedRequest: (request: ServiceRequestDTOThin | null) => void;
   children: React.ReactNode;
 }
 
 export default function ServiceRequestDetail({
   selectedRequest,
   selectedRequestData,
-  setSelectedRequest,
   children,
 }: ServiceRequestDrawerProps) {
-  const { mode } = useMapContext();
+  const { setSelectedRequestId } = useMapContext();
   const isOpen = Boolean(selectedRequest);
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
@@ -57,20 +54,9 @@ export default function ServiceRequestDetail({
       <>
         <div className="fixed right-0 top-0 w-1/3 h-16 bg-background/95 border-b border-border z-20 transition-colors duration-200">
           <div className="p-4 flex justify-between items-center">
-            {isOpen && (
-              <h2 className="text-lg font-semibold">Service Request Details</h2>
-            )}
             <div className="flex items-center gap-2 ml-auto">
               <ModeToggle />
               <ThemeToggle />
-              {isOpen && (
-                <button
-                  onClick={() => setSelectedRequest(null)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200"
-                >
-                  <XMarkIcon className="w-6 h-6" />
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -91,15 +77,14 @@ export default function ServiceRequestDetail({
       </div>
       <Drawer
         open={isOpen}
-        onOpenChange={(open) => !open && setSelectedRequest(null)}
+        onOpenChange={(open) => !open && setSelectedRequestId(null)}
       >
         <DrawerContent>
           <DrawerHeader className="flex justify-between items-center">
-            <DrawerTitle className="transition-colors duration-200">
-              Service Request Details
-            </DrawerTitle>
+            <DrawerTitle className="transition-colors duration-200"></DrawerTitle>
           </DrawerHeader>
           {selectedRequest && content}
+          {children}
         </DrawerContent>
       </Drawer>
     </>

@@ -7,6 +7,8 @@ export type MapMode = "mixed" | "points" | "heatmap" | "hexagons";
 interface MapContextType {
   mode: MapMode;
   setMode: (mode: MapMode) => void;
+  selectedRequestId: string | null;
+  setSelectedRequestId: (id: string | null) => void;
 }
 
 const MapContext = createContext<MapContextType | undefined>(undefined);
@@ -15,6 +17,7 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentMode = searchParams.get("mode") as MapMode;
+  const currentRequestId = searchParams.get("id");
 
   // Validate and get mode from URL or use default
   const getValidMode = (mode: string | null): MapMode => {
@@ -24,10 +27,30 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
 
   const mode = getValidMode(currentMode);
 
+  const updateURL = (params: { mode?: MapMode; id?: string | null }) => {
+    const newParams = new URLSearchParams(searchParams.toString());
+
+    if (params.mode) {
+      newParams.set("mode", params.mode);
+      // Clear ID when mode changes
+      newParams.delete("id");
+    }
+
+    if (params.id === null) {
+      newParams.delete("id");
+    } else if (params.id) {
+      newParams.set("id", params.id);
+    }
+
+    router.push(`?${newParams.toString()}`, { scroll: false });
+  };
+
   const setMode = (newMode: MapMode) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("mode", newMode);
-    router.push(`?${params.toString()}`, { scroll: false });
+    updateURL({ mode: newMode });
+  };
+
+  const setSelectedRequestId = (id: string | null) => {
+    updateURL({ id });
   };
 
   // Set initial mode in URL if not present
@@ -38,7 +61,14 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
   }, [currentMode]);
 
   return (
-    <MapContext.Provider value={{ mode, setMode }}>
+    <MapContext.Provider
+      value={{
+        mode,
+        setMode,
+        selectedRequestId: currentRequestId,
+        setSelectedRequestId,
+      }}
+    >
       {children}
     </MapContext.Provider>
   );
