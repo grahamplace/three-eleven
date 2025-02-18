@@ -19,7 +19,7 @@ import { ServiceRequestDTOThin } from "@/entities/data-transfer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTheme } from "next-themes";
 import { binPointsToHexagons } from "@/lib/h3";
-import { LayerToggle } from "./LayerToggle";
+import { ModeToggle } from "./ModeToggle";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { ThemeToggle } from "./ThemeToggle";
 import { useMapContext } from "@/contexts/MapContext";
@@ -35,7 +35,7 @@ export default function MapComponent({ token }: { token: string }) {
 function MapContent({ token }: { token: string }) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const { theme } = useTheme();
-  const { visibleLayers } = useMapContext();
+  const { mode } = useMapContext();
   const [points, setPoints] = useState<ServiceRequestDTOThin[]>([]);
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
@@ -116,9 +116,9 @@ function MapContent({ token }: { token: string }) {
 
   // Pass zoom to hexagonData calculation
   const hexagonData = useMemo(() => {
-    if (!visibleLayers.hexagons) return null;
+    if (mode !== "hexagons") return null;
     return binPointsToHexagons(points, mapBounds, zoom);
-  }, [points, mapBounds, zoom, visibleLayers.hexagons]);
+  }, [points, mapBounds, zoom, mode]);
 
   const handleMapInteraction = (event: MapMouseEvent | MapTouchEvent) => {
     if (!event.features?.length) {
@@ -160,7 +160,7 @@ function MapContent({ token }: { token: string }) {
           onMoveEnd={handleMapMove}
           onLoad={handleMapMove}
         >
-          {visibleLayers.hexagons && (
+          {mode === "hexagons" ? (
             <Source type="geojson" data={hexagonData}>
               <Layer
                 id="hexagon-layer"
@@ -171,7 +171,7 @@ function MapContent({ token }: { token: string }) {
                     ["linear"],
                     ["get", "count"],
                     0,
-                    "rgba(33,102,172,0.0)", // Light color for empty hexagons
+                    "rgba(33,102,172,0.0)",
                     10,
                     "rgb(103,169,207)",
                     20,
@@ -183,7 +183,7 @@ function MapContent({ token }: { token: string }) {
                     50,
                     "rgb(178,24,43)",
                   ],
-                  "fill-opacity": 0.5,
+                  "fill-opacity": mode === "hexagons" ? 0.7 : 0.5,
                 }}
               />
               <Layer
@@ -196,8 +196,9 @@ function MapContent({ token }: { token: string }) {
                 }}
               />
             </Source>
-          )}
-          {visibleLayers.heatmap && (
+          ) : null}
+
+          {mode === "heatmap" && (
             <Source type="geojson" data={geojson}>
               <Layer
                 id="heatmap-layer"
@@ -225,11 +226,11 @@ function MapContent({ token }: { token: string }) {
                   "heatmap-radius": [
                     "interpolate",
                     ["linear"],
-                    ["heatmap-density"],
+                    ["zoom"],
                     0,
-                    10,
-                    1,
-                    30,
+                    2,
+                    20,
+                    20,
                   ],
                   "heatmap-opacity": {
                     type: "exponential",
@@ -242,22 +243,39 @@ function MapContent({ token }: { token: string }) {
               />
             </Source>
           )}
-          {visibleLayers.points && (
+
+          {(mode === "points" || mode === "heatmap") && (
             <Source type="geojson" data={geojson}>
               <Layer
                 id="point-layer"
                 type="circle"
-                minzoom={14}
                 paint={{
                   "circle-radius": [
-                    "case",
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    11,
                     [
-                      "==",
-                      ["get", "serviceRequestId"],
-                      selectedRequest?.serviceRequestId || "",
+                      "case",
+                      [
+                        "==",
+                        ["get", "serviceRequestId"],
+                        selectedRequest?.serviceRequestId || "",
+                      ],
+                      1,
+                      0.05,
                     ],
-                    8,
-                    4,
+                    20,
+                    [
+                      "case",
+                      [
+                        "==",
+                        ["get", "serviceRequestId"],
+                        selectedRequest?.serviceRequestId || "",
+                      ],
+                      12,
+                      6,
+                    ],
                   ],
                   "circle-color": [
                     "case",
@@ -266,34 +284,29 @@ function MapContent({ token }: { token: string }) {
                       ["get", "serviceRequestId"],
                       selectedRequest?.serviceRequestId || "",
                     ],
-                    "#00ff00", // bright green for selected point
-                    "transparent", // default color for unselected points
+                    "#00ff00",
+                    "transparent",
                   ],
+                  "circle-opacity":
+                    mode === "heatmap"
+                      ? {
+                          stops: [
+                            [14, 0],
+                            [15, 1],
+                          ],
+                        }
+                      : 1,
+                  "circle-stroke-opacity":
+                    mode === "heatmap"
+                      ? {
+                          stops: [
+                            [14, 0],
+                            [15, 1],
+                          ],
+                        }
+                      : 1,
+                  "circle-stroke-width": 1,
                   "circle-stroke-color": theme === "dark" ? "white" : "gray",
-                  "circle-stroke-width": [
-                    "case",
-                    [
-                      "==",
-                      ["get", "serviceRequestId"],
-                      selectedRequest?.serviceRequestId || "",
-                    ],
-                    2, // thicker stroke for selected point
-                    1, // default stroke width
-                  ],
-                  "circle-opacity": {
-                    type: "exponential",
-                    stops: [
-                      [14, 0.1],
-                      [16, 1],
-                    ],
-                  },
-                  "circle-stroke-opacity": {
-                    type: "exponential",
-                    stops: [
-                      [14, 0.1],
-                      [16, 1],
-                    ],
-                  },
                 }}
               />
             </Source>
@@ -307,7 +320,7 @@ function MapContent({ token }: { token: string }) {
         setSelectedRequest={setSelectedRequest}
       >
         <div className="flex items-center gap-2">
-          <LayerToggle />
+          <ModeToggle />
           <ThemeToggle />
           <button
             onClick={() => setSelectedRequest(null)}

@@ -5,7 +5,7 @@ import { ServiceRequest } from "@/entities";
 import { ServiceRequestDTOThin } from "@/entities/data-transfer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { LayerToggle } from "@/components/LayerToggle";
+import { ModeToggle } from "@/components/ModeToggle";
 import { useMapContext } from "@/contexts/MapContext";
 
 interface ServiceRequestDrawerProps {
@@ -21,7 +21,7 @@ export default function ServiceRequestDetail({
   setSelectedRequest,
   children,
 }: ServiceRequestDrawerProps) {
-  const { visibleLayers, setVisibleLayers } = useMapContext();
+  const { mode } = useMapContext();
   const isOpen = Boolean(selectedRequest);
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
@@ -61,7 +61,7 @@ export default function ServiceRequestDetail({
               <h2 className="text-lg font-semibold">Service Request Details</h2>
             )}
             <div className="flex items-center gap-2 ml-auto">
-              <LayerToggle />
+              <ModeToggle />
               <ThemeToggle />
               {isOpen && (
                 <button
@@ -86,7 +86,7 @@ export default function ServiceRequestDetail({
   return (
     <>
       <div className="fixed right-4 top-4 z-50 flex items-center gap-2 bg-background/95 p-2 rounded-lg shadow-lg">
-        <LayerToggle />
+        <ModeToggle />
         <ThemeToggle />
       </div>
       <Drawer
