@@ -1,10 +1,11 @@
 import { Square3Stack3DIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMapContext, MapMode } from "@/contexts/MapContext";
 
 export function ModeToggle() {
   const { mode, setMode } = useMapContext();
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const modes: { value: MapMode; label: string }[] = [
     { value: "heatmap", label: "Heatmap" },
@@ -12,8 +13,22 @@ export function ModeToggle() {
     { value: "hexabin", label: "Hexabin" },
   ];
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
