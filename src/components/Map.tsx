@@ -121,7 +121,7 @@ function MapContent({ token }: { token: string }) {
 
   // Pass zoom to hexagonData calculation
   const hexagonData = useMemo(() => {
-    if (mode !== "hexagons") return null;
+    if (mode !== "hexabin") return null;
     return binPointsToHexagons(points, mapBounds, zoom);
   }, [points, mapBounds, zoom, mode]);
 
@@ -170,7 +170,7 @@ function MapContent({ token }: { token: string }) {
           onMoveEnd={handleMapMove}
           onLoad={handleMapMove}
         >
-          {mode === "hexagons" ? (
+          {mode === "hexabin" ? (
             <Source type="geojson" data={hexagonData}>
               <Layer
                 id="hexagon-layer"
@@ -193,7 +193,7 @@ function MapContent({ token }: { token: string }) {
                     50,
                     "rgb(178,24,43)",
                   ],
-                  "fill-opacity": mode === "hexagons" ? 0.7 : 0.5,
+                  "fill-opacity": mode === "hexabin" ? 0.7 : 0.5,
                 }}
               />
               <Layer

@@ -9,7 +9,7 @@ export function ModeToggle() {
   const modes: { value: MapMode; label: string }[] = [
     { value: "heatmap", label: "Heatmap" },
     { value: "points", label: "Points" },
-    { value: "hexagons", label: "Hexagons" },
+    { value: "hexabin", label: "Hexabin" },
   ];
 
   return (
