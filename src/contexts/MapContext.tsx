@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useContext, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export type MapMode = "mixed" | "points" | "heatmap" | "hexabin";
@@ -13,7 +13,8 @@ interface MapContextType {
 
 const MapContext = createContext<MapContextType | undefined>(undefined);
 
-export function MapProvider({ children }: { children: React.ReactNode }) {
+// Create a separate component to handle search params
+function MapContextContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentMode = searchParams.get("mode") as MapMode;
@@ -71,6 +72,14 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
     </MapContext.Provider>
+  );
+}
+
+export function MapProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense>
+      <MapContextContent>{children}</MapContextContent>
+    </Suspense>
   );
 }
 
