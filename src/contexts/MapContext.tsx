@@ -3,7 +3,6 @@ import { createContext, useContext, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format, subDays } from "date-fns";
 
-// Get default date range (31 days ago to yesterday)
 const getDefaultDateRange = () => {
   const yesterday = subDays(new Date(), 1);
   const thirtyOneDaysAgo = subDays(yesterday, 31);
