@@ -25,7 +25,8 @@ export default function ServiceRequestDetail({
 
   const content = (
     <div className="p-4 space-y-4 min-h-[calc(100vh-150px)] max-h-[calc(100vh-150px)] overflow-y-auto">
-      {selectedRequestData ? (
+      {/* TODO: Loading state for while SR data is fetching */}
+      {selectedRequestData && (
         <div className="flex flex-col gap-4">
           <pre className="whitespace-pre-wrap overflow-x-auto bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-sm transition-colors duration-200">
             {JSON.stringify(selectedRequestData, null, 2)}
@@ -41,10 +42,6 @@ export default function ServiceRequestDetail({
               />
             </div>
           )}
-        </div>
-      ) : (
-        <div className="text-gray-500 dark:text-gray-400 transition-colors duration-200">
-          Loading...
         </div>
       )}
     </div>
@@ -62,7 +59,7 @@ export default function ServiceRequestDetail({
             </div>
           </div>
         </div>
-        {isOpen && (
+        {(isDesktop || isOpen) && (
           <div className="fixed right-0 top-16 w-1/3 h-[calc(100vh-64px)] bg-background/95 border-border shadow-lg overflow-y-auto z-10 transition-colors duration-200">
             <div className="p-6 pt-2">{content}</div>
           </div>
