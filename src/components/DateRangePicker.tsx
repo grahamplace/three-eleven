@@ -1,70 +1,69 @@
+import * as React from "react";
 import { CalendarIcon } from "@heroicons/react/24/outline";
-import { useState, useRef, useEffect } from "react";
+import { format } from "date-fns";
+import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useMapContext } from "@/contexts/MapContext";
 
-export function DateRangePicker() {
+export default function DatePickerWithRange() {
   const { dateRange, setDateRange } = useMapContext();
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleDateChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    field: "start" | "end"
-  ) => {
-    setDateRange({
-      ...dateRange,
-      [field]: e.target.value,
-    });
-  };
+  const [date, setDate] = React.useState<DateRange | undefined>({
+    from: new Date(dateRange.start),
+    to: new Date(dateRange.end),
+  });
 
   return (
-    <div className="relative" ref={containerRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        aria-label="Select date range"
-      >
-        <CalendarIcon className="h-5 w-5" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-background border border-border rounded-lg shadow-lg p-4 z-50">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium">Start Date</label>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => handleDateChange(e, "start")}
-                className="w-full rounded-md border border-border p-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium">End Date</label>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => handleDateChange(e, "end")}
-                className="w-full rounded-md border border-border p-2"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="grid gap-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "justify-start text-left font-normal",
+              !date && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {date?.from ? (
+              date.to ? (
+                <>
+                  {format(date.from, "LLL dd, y")} -{" "}
+                  {format(date.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(date.from, "LLL dd, y")
+              )
+            ) : (
+              <span>Pick a date</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            initialFocus
+            mode="range"
+            defaultMonth={date?.from}
+            selected={date}
+            onSelect={(newDate) => {
+              setDate(newDate);
+              if (newDate?.from && newDate?.to) {
+                setDateRange({
+                  start: format(newDate.from, "yyyy-MM-dd"),
+                  end: format(newDate.to, "yyyy-MM-dd"),
+                });
+              }
+            }}
+            numberOfMonths={2}
+          />
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

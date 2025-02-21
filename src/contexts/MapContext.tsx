@@ -6,7 +6,7 @@ import { format, subDays } from "date-fns";
 // Get default date range (31 days ago to yesterday)
 const getDefaultDateRange = () => {
   const yesterday = subDays(new Date(), 1);
-  const thirtyOneDaysAgo = subDays(yesterday, 90);
+  const thirtyOneDaysAgo = subDays(yesterday, 31);
   return {
     start: format(thirtyOneDaysAgo, "yyyy-MM-dd"),
     end: format(yesterday, "yyyy-MM-dd"),
