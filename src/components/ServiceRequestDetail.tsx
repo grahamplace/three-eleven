@@ -6,6 +6,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useMapContext } from "@/contexts/MapContext";
+import { DateRangePicker } from "@/components/DateRangePicker";
 
 interface ServiceRequestDrawerProps {
   selectedRequest: ServiceRequestDTOThin | null;
@@ -55,6 +56,7 @@ export default function ServiceRequestDetail({
         <div className="fixed right-0 top-0 w-1/3 h-16 bg-background/95 border-b border-border z-20 transition-colors duration-200">
           <div className="p-4 flex justify-between items-center">
             <div className="flex items-center gap-2 ml-auto">
+              <DateRangePicker />
               <ModeToggle />
               <ThemeToggle />
             </div>
@@ -72,6 +74,7 @@ export default function ServiceRequestDetail({
   return (
     <>
       <div className="fixed right-4 top-4 z-50 flex items-center gap-2 bg-background/95 p-2 rounded-lg shadow-lg">
+        <DateRangePicker />
         <ModeToggle />
         <ThemeToggle />
       </div>

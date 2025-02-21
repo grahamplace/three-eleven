@@ -1,6 +1,17 @@
 "use client";
 import { createContext, useContext, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { format, subDays } from "date-fns";
+
+// Get default date range (31 days ago to yesterday)
+const getDefaultDateRange = () => {
+  const yesterday = subDays(new Date(), 1);
+  const thirtyOneDaysAgo = subDays(yesterday, 90);
+  return {
+    start: format(thirtyOneDaysAgo, "yyyy-MM-dd"),
+    end: format(yesterday, "yyyy-MM-dd"),
+  };
+};
 
 export type MapMode = "points" | "heatmap" | "hexabin";
 
@@ -9,6 +20,11 @@ interface MapContextType {
   setMode: (mode: MapMode) => void;
   selectedRequestId: string | null;
   setSelectedRequestId: (id: string | null) => void;
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  setDateRange: (range: { start: string; end: string }) => void;
 }
 
 const MapContext = createContext<MapContextType | undefined>(undefined);
@@ -19,6 +35,8 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const currentMode = searchParams.get("mode") as MapMode;
   const currentRequestId = searchParams.get("id");
+  const currentStart = searchParams.get("start");
+  const currentEnd = searchParams.get("end");
 
   // Validate and get mode from URL or use default
   const getValidMode = (mode: string | null): MapMode => {
@@ -27,8 +45,14 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
   };
 
   const mode = getValidMode(currentMode);
+  const defaultRange = getDefaultDateRange();
 
-  const updateURL = (params: { mode?: MapMode; id?: string | null }) => {
+  const updateURL = (params: {
+    mode?: MapMode;
+    id?: string | null;
+    start?: string;
+    end?: string;
+  }) => {
     const newParams = new URLSearchParams(searchParams.toString());
 
     if (params.mode) {
@@ -43,6 +67,14 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
       newParams.set("id", params.id);
     }
 
+    if (params.start) {
+      newParams.set("start", params.start);
+    }
+
+    if (params.end) {
+      newParams.set("end", params.end);
+    }
+
     router.push(`?${newParams.toString()}`, { scroll: false });
   };
 
@@ -54,12 +86,19 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
     updateURL({ id });
   };
 
+  const setDateRange = (range: { start: string; end: string }) => {
+    updateURL({ start: range.start, end: range.end });
+  };
+
   // Set initial mode in URL if not present
   useEffect(() => {
     if (!currentMode) {
       setMode("heatmap");
     }
-  }, [currentMode]);
+    if (!currentStart || !currentEnd) {
+      setDateRange(defaultRange);
+    }
+  }, [currentMode, currentStart, currentEnd]);
 
   return (
     <MapContext.Provider
@@ -68,6 +107,11 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
         setMode,
         selectedRequestId: currentRequestId,
         setSelectedRequestId,
+        dateRange: {
+          start: currentStart || defaultRange.start,
+          end: currentEnd || defaultRange.end,
+        },
+        setDateRange,
       }}
     >
       {children}

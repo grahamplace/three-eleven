@@ -8,7 +8,7 @@ SELECT * FROM service_requests WHERE service_request_id = :service_request_id;
 SELECT * 
   FROM service_requests 
  WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
-   AND service_subtype = ANY(:service_subtype);
+   AND service_details = ANY(:service_details);
 
 /* @name CreateServiceRequests
    @param requests -> ((

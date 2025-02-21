@@ -106,7 +106,7 @@ export const findServiceRequestById = new PreparedQuery<
 export interface IFindServiceRequestByDateAndTypeParams {
   date_end?: DateOrString | null | void;
   date_start?: DateOrString | null | void;
-  service_subtype?: stringArray | null | void;
+  service_details?: stringArray | null | void;
 }
 
 /** 'FindServiceRequestByDateAndType' return type */
@@ -145,7 +145,7 @@ export interface IFindServiceRequestByDateAndTypeQuery {
 }
 
 const findServiceRequestByDateAndTypeIR: any = {
-  usedParamSet: { date_start: true, date_end: true, service_subtype: true },
+  usedParamSet: { date_start: true, date_end: true, service_details: true },
   params: [
     {
       name: "date_start",
@@ -160,14 +160,14 @@ const findServiceRequestByDateAndTypeIR: any = {
       locs: [{ a: 91, b: 99 }],
     },
     {
-      name: "service_subtype",
+      name: "service_details",
       required: false,
       transform: { type: "scalar" },
       locs: [{ a: 130, b: 145 }],
     },
   ],
   statement:
-    "SELECT * \n  FROM service_requests \n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end\n   AND service_subtype = ANY(:service_subtype)",
+    "SELECT * \n  FROM service_requests \n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end\n   AND service_details = ANY(:service_details)",
 };
 
 /**
@@ -176,7 +176,7 @@ const findServiceRequestByDateAndTypeIR: any = {
  * SELECT *
  *   FROM service_requests
  *  WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
- *    AND service_subtype = ANY(:service_subtype)
+ *    AND service_details = ANY(:service_details)
  * ```
  */
 export const findServiceRequestByDateAndType = new PreparedQuery<

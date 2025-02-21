@@ -114,6 +114,20 @@ CREATE INDEX idx_service_requests_updated_datetime ON public.service_requests US
 
 
 --
+-- Name: service_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX service_idx ON public.service_requests USING btree (date(requested_datetime), service_name, service_subtype);
+
+
+--
+-- Name: service_idx_v2; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX service_idx_v2 ON public.service_requests USING btree (date(requested_datetime), service_name, service_details);
+
+
+--
 -- Name: service_requests trigger_set_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -131,4 +145,6 @@ CREATE TRIGGER trigger_set_updated_at BEFORE UPDATE ON public.service_requests F
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20250123235513'),
-    ('20250124000721');
+    ('20250124000721'),
+    ('20250201194801'),
+    ('20250221042408');

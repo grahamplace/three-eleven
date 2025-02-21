@@ -10,9 +10,9 @@ import {
 export const getServiceRequests = async (
   dateStart: string,
   dateEnd: string,
-  serviceSubtype: string[]
+  serviceDetails: string[]
 ): Promise<ServiceRequestDTOThin[]> => {
-  const results = await findByDateAndType(dateStart, dateEnd, serviceSubtype);
+  const results = await findByDateAndType(dateStart, dateEnd, serviceDetails);
   const dtos = results.map(serviceRequestToDTOThin);
   return dtos;
 };

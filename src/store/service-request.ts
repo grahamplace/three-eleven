@@ -24,13 +24,13 @@ export const find = async (serviceRequesId: string) => {
 export const findByDateAndType = async (
   dateStart: string,
   dateEnd: string,
-  serviceSubtype: string[]
+  serviceDetails: string[]
 ) => {
   const results = await queries.findServiceRequestByDateAndType.run(
     {
       date_start: dateStart,
       date_end: dateEnd,
-      service_subtype: serviceSubtype,
+      service_details: serviceDetails,
     },
     db
   );

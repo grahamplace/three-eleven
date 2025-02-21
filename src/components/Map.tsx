@@ -34,7 +34,8 @@ export default function MapComponent({ token }: { token: string }) {
 function MapContent({ token }: { token: string }) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const { theme } = useTheme();
-  const { mode, selectedRequestId, setSelectedRequestId } = useMapContext();
+  const { mode, selectedRequestId, setSelectedRequestId, dateRange } =
+    useMapContext();
   const [isLoading, setIsLoading] = useState(true);
   const [points, setPoints] = useState<ServiceRequestDTOThin[]>([]);
   const [selectedRequestData, setSelectedRequestData] =
@@ -68,8 +69,15 @@ function MapContent({ token }: { token: string }) {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const data = await getServiceRequests("2024-01-01", "2024-12-31", [
+        const data = await getServiceRequests(dateRange.start, dateRange.end, [
           "Human or Animal Waste",
+          "human_waste_or_urine",
+          "Human/Animal Waste - ClearChannel",
+          "Human/Animal Waste",
+          "Human / Animal Waste",
+          "Human/Animal Waste - CalTrans",
+          "Human/Animal Waste - BART",
+          "Human/Animal Waste - Other",
         ]);
         setPoints(data);
       } catch (error) {
@@ -80,7 +88,7 @@ function MapContent({ token }: { token: string }) {
     };
 
     fetchData();
-  }, []);
+  }, [dateRange.start, dateRange.end]);
 
   useEffect(() => {
     const fetchRequestDetails = async () => {
