@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export type MapMode = "mixed" | "points" | "heatmap" | "hexabin";
+export type MapMode = "points" | "heatmap" | "hexabin";
 
 interface MapContextType {
   mode: MapMode;
@@ -22,7 +22,7 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
 
   // Validate and get mode from URL or use default
   const getValidMode = (mode: string | null): MapMode => {
-    const validModes: MapMode[] = ["mixed", "points", "heatmap", "hexabin"];
+    const validModes: MapMode[] = ["points", "heatmap", "hexabin"];
     return validModes.includes(mode as MapMode) ? (mode as MapMode) : "heatmap";
   };
 
