@@ -1,3 +1,5 @@
+import { getLatestUpdatedDatetime } from "@/store/metadata";
+import "server-only";
 import Map from "../components/Map";
 import { envobj, string } from "envobj";
 
@@ -8,11 +10,12 @@ const env = envobj(
   process.env as Record<string, string | undefined>
 );
 
-export default function Home() {
+export default async function Page() {
+  const dataAsOf = await getLatestUpdatedDatetime();
   return (
     <div className="min-h-screen w-[100vw] flex items-center justify-center">
       <main className="w-full h-full">
-        <Map token={env.MAPBOX_ACCESS_TOKEN} />
+        <Map token={env.MAPBOX_ACCESS_TOKEN} dataAsOf={dataAsOf} />
       </main>
     </div>
   );

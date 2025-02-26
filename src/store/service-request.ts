@@ -1,17 +1,16 @@
 import { db } from "@/lib/db";
 import * as queries from "@/store/queries/service_request.queries";
 import { ServiceRequest } from "@/entities";
-import { firstEntity } from "./utils";
 import { supportedMediaDomains } from "@/lib/config";
+import { firstEntity } from "./utils";
 
-export const getLatestUpdatedDatetime = async () => {
-  const results = await queries.getLatestUpdatedDatetime.run(undefined, db);
-  const result = results[0].updated_datetime;
-  if (result === null) {
-    throw new Error("No updated datetime found");
-  }
-  return result;
-};
+export async function getLatestUpdatedDatetimeFromPg() {
+  const pgLatestUpdatedDatetime = await queries.getLatestUpdatedDatetime.run(
+    undefined,
+    db
+  );
+  return pgLatestUpdatedDatetime[0].updated_datetime;
+}
 
 export const find = async (serviceRequesId: string) => {
   const results = await queries.findServiceRequestById.run(

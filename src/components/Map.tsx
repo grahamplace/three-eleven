@@ -19,19 +19,24 @@ import { ServiceRequestDTOThin } from "@/entities/data-transfer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTheme } from "next-themes";
 import { binPointsToHexagons } from "@/lib/h3";
-import { ModeToggle } from "./ModeToggle";
-import { ThemeToggle } from "./ThemeToggle";
 import { useMapContext } from "@/contexts/MapContext";
+import { Badge } from "./ui/badge";
 
-export default function MapComponent({ token }: { token: string }) {
+export default function MapComponent({
+  token,
+  dataAsOf,
+}: {
+  token: string;
+  dataAsOf: Date;
+}) {
   return (
     <MapProvider>
-      <MapContent token={token} />
+      <MapContent token={token} dataAsOf={dataAsOf} />
     </MapProvider>
   );
 }
 
-function MapContent({ token }: { token: string }) {
+function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const { theme } = useTheme();
   const { mode, selectedRequestId, setSelectedRequestId, dateRange } =
@@ -169,7 +174,7 @@ function MapContent({ token }: { token: string }) {
 
   return (
     <div className="h-full w-full flex flex-row">
-      <div className={isDesktop ? "w-2/3" : "w-full"}>
+      <div className="w-full">
         <div className="relative h-full">
           <Map
             id="map"
@@ -352,12 +357,12 @@ function MapContent({ token }: { token: string }) {
       <ServiceRequestDetail
         selectedRequest={selectedRequest}
         selectedRequestData={selectedRequestData}
-      >
-        <div className="flex items-center gap-2">
-          <ModeToggle />
-          <ThemeToggle />
-        </div>
-      </ServiceRequestDetail>
+      />
+      <div className="fixed right-0 bottom-0 p-2">
+        <Badge variant="default">
+          Last updated: {dataAsOf.toLocaleDateString()}
+        </Badge>
+      </div>
     </div>
   );
 }

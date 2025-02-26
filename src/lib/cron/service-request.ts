@@ -1,4 +1,8 @@
-import { createMany, getLatestUpdatedDatetime } from "@/store/service-request";
+import { createMany } from "@/store/service-request";
+import {
+  getLatestUpdatedDatetime,
+  setLatestUpdatedDatetime,
+} from "@/store/metadata";
 import { ServiceRequest } from "@/entities";
 
 const API_BASE_URL = "https://data.sfgov.org/resource/vw6y-z8j6.json";
@@ -68,6 +72,9 @@ export async function ingestServiceRequests() {
       // Add delay to avoid any rate limiting
       await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
     }
+
+    // After batch completes, set the latest updated datetime
+    await setLatestUpdatedDatetime();
 
     console.info(`Completed! Total records processed: ${totalProcessed}`);
   } catch (error) {

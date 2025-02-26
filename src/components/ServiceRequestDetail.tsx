@@ -12,13 +12,11 @@ import { LocationButton } from "./LocationButton";
 interface ServiceRequestDrawerProps {
   selectedRequest: ServiceRequestDTOThin | null;
   selectedRequestData: ServiceRequest | null;
-  children: React.ReactNode;
 }
 
 export default function ServiceRequestDetail({
   selectedRequest,
   selectedRequestData,
-  children,
 }: ServiceRequestDrawerProps) {
   const { setSelectedRequestId } = useMapContext();
   const isOpen = Boolean(selectedRequest);
@@ -48,29 +46,6 @@ export default function ServiceRequestDetail({
     </div>
   );
 
-  if (isDesktop) {
-    return (
-      <>
-        <div className="fixed right-0 top-0 w-1/3 h-16 bg-background/95 border-b border-border z-20 transition-colors duration-200">
-          <div className="p-4 flex justify-between items-center">
-            <div className="flex items-center gap-2 ml-auto">
-              <DateRangePickerWithRange />
-              <ModeToggle />
-              <RecenterButton />
-              <LocationButton />
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-        {(isDesktop || isOpen) && (
-          <div className="fixed right-0 top-16 w-1/3 h-[calc(100vh-64px)] bg-background/95 border-border shadow-lg overflow-y-auto z-10 transition-colors duration-200">
-            <div className="p-6 pt-2">{content}</div>
-          </div>
-        )}
-      </>
-    );
-  }
-
   return (
     <>
       <div className="fixed right-4 top-4 z-50 flex items-center gap-2 bg-background/95 p-2 rounded-lg shadow-lg">
@@ -89,7 +64,6 @@ export default function ServiceRequestDetail({
             <DrawerTitle className="transition-colors duration-200"></DrawerTitle>
           </DrawerHeader>
           {selectedRequest && content}
-          {children}
         </DrawerContent>
       </Drawer>
     </>
