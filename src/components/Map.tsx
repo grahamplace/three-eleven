@@ -360,7 +360,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
       />
       <div className="fixed right-0 bottom-0 p-2">
         <Badge variant="default">
-          Last updated: {dataAsOf.toLocaleDateString()}
+          Data updated: {dataAsOf.toLocaleDateString()}
         </Badge>
       </div>
     </div>
