@@ -26,6 +26,6 @@ export const setLatestUpdatedDatetime = async () => {
 
   await redis.set(
     prefixKey("latest_updated_datetime"),
-    pgLatestUpdatedDatetime.toISOString()
+    pgLatestUpdatedDatetime.toISOString(),
   );
 };

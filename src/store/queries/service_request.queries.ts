@@ -1,23 +1,13 @@
 /** Types generated for queries found in "src/store/queries/service_request.sql" */
 import { PreparedQuery } from "@pgtyped/runtime";
 
-export type DateOrString = Date | string;
+/** Query 'GetLatestUpdatedDatetime' is invalid, so its result is assigned type 'never'.
+ *  */
+export type IGetLatestUpdatedDatetimeResult = never;
 
-export type stringArray = string[];
-
-/** 'GetLatestUpdatedDatetime' parameters type */
-export type IGetLatestUpdatedDatetimeParams = void;
-
-/** 'GetLatestUpdatedDatetime' return type */
-export interface IGetLatestUpdatedDatetimeResult {
-  updated_datetime: Date | null;
-}
-
-/** 'GetLatestUpdatedDatetime' query type */
-export interface IGetLatestUpdatedDatetimeQuery {
-  params: IGetLatestUpdatedDatetimeParams;
-  result: IGetLatestUpdatedDatetimeResult;
-}
+/** Query 'GetLatestUpdatedDatetime' is invalid, so its parameters are assigned type 'never'.
+ *  */
+export type IGetLatestUpdatedDatetimeParams = never;
 
 const getLatestUpdatedDatetimeIR: any = {
   usedParamSet: {},
@@ -37,45 +27,13 @@ export const getLatestUpdatedDatetime = new PreparedQuery<
   IGetLatestUpdatedDatetimeResult
 >(getLatestUpdatedDatetimeIR);
 
-/** 'FindServiceRequestById' parameters type */
-export interface IFindServiceRequestByIdParams {
-  service_request_id?: string | null | void;
-}
+/** Query 'FindServiceRequestById' is invalid, so its result is assigned type 'never'.
+ *  */
+export type IFindServiceRequestByIdResult = never;
 
-/** 'FindServiceRequestById' return type */
-export interface IFindServiceRequestByIdResult {
-  address: string | null;
-  agency_responsible: string | null;
-  analysis_neighborhood: string | null;
-  closed_date: Date | null;
-  created_at: Date | null;
-  data_as_of: Date | null;
-  data_loaded_at: Date | null;
-  lat: number | null;
-  latlon: string | null;
-  long: number | null;
-  media_url: string | null;
-  neighborhoods_sffind_boundaries: string | null;
-  police_district: string | null;
-  requested_datetime: Date;
-  service_details: string | null;
-  service_name: string | null;
-  service_request_id: string;
-  service_subtype: string | null;
-  source: string | null;
-  status_description: string | null;
-  status_notes: string | null;
-  street: string | null;
-  supervisor_district: number | null;
-  updated_at: Date | null;
-  updated_datetime: Date | null;
-}
-
-/** 'FindServiceRequestById' query type */
-export interface IFindServiceRequestByIdQuery {
-  params: IFindServiceRequestByIdParams;
-  result: IFindServiceRequestByIdResult;
-}
+/** Query 'FindServiceRequestById' is invalid, so its parameters are assigned type 'never'.
+ *  */
+export type IFindServiceRequestByIdParams = never;
 
 const findServiceRequestByIdIR: any = {
   usedParamSet: { service_request_id: true },
@@ -102,47 +60,13 @@ export const findServiceRequestById = new PreparedQuery<
   IFindServiceRequestByIdResult
 >(findServiceRequestByIdIR);
 
-/** 'FindServiceRequestByDateAndType' parameters type */
-export interface IFindServiceRequestByDateAndTypeParams {
-  date_end?: DateOrString | null | void;
-  date_start?: DateOrString | null | void;
-  service_details?: stringArray | null | void;
-}
+/** Query 'FindServiceRequestByDateAndType' is invalid, so its result is assigned type 'never'.
+ *  */
+export type IFindServiceRequestByDateAndTypeResult = never;
 
-/** 'FindServiceRequestByDateAndType' return type */
-export interface IFindServiceRequestByDateAndTypeResult {
-  address: string | null;
-  agency_responsible: string | null;
-  analysis_neighborhood: string | null;
-  closed_date: Date | null;
-  created_at: Date | null;
-  data_as_of: Date | null;
-  data_loaded_at: Date | null;
-  lat: number | null;
-  latlon: string | null;
-  long: number | null;
-  media_url: string | null;
-  neighborhoods_sffind_boundaries: string | null;
-  police_district: string | null;
-  requested_datetime: Date;
-  service_details: string | null;
-  service_name: string | null;
-  service_request_id: string;
-  service_subtype: string | null;
-  source: string | null;
-  status_description: string | null;
-  status_notes: string | null;
-  street: string | null;
-  supervisor_district: number | null;
-  updated_at: Date | null;
-  updated_datetime: Date | null;
-}
-
-/** 'FindServiceRequestByDateAndType' query type */
-export interface IFindServiceRequestByDateAndTypeQuery {
-  params: IFindServiceRequestByDateAndTypeParams;
-  result: IFindServiceRequestByDateAndTypeResult;
-}
+/** Query 'FindServiceRequestByDateAndType' is invalid, so its parameters are assigned type 'never'.
+ *  */
+export type IFindServiceRequestByDateAndTypeParams = never;
 
 const findServiceRequestByDateAndTypeIR: any = {
   usedParamSet: { date_start: true, date_end: true, service_details: true },
@@ -184,42 +108,54 @@ export const findServiceRequestByDateAndType = new PreparedQuery<
   IFindServiceRequestByDateAndTypeResult
 >(findServiceRequestByDateAndTypeIR);
 
-/** 'CreateServiceRequests' parameters type */
-export interface ICreateServiceRequestsParams {
-  requests: readonly {
-    service_request_id: string | null | void;
-    requested_datetime: DateOrString | null | void;
-    closed_date: DateOrString | null | void;
-    updated_datetime: DateOrString | null | void;
-    status_description: string | null | void;
-    status_notes: string | null | void;
-    agency_responsible: string | null | void;
-    service_name: string | null | void;
-    service_subtype: string | null | void;
-    service_details: string | null | void;
-    address: string | null | void;
-    street: string | null | void;
-    supervisor_district: number | null | void;
-    neighborhoods_sffind_boundaries: string | null | void;
-    analysis_neighborhood: string | null | void;
-    police_district: string | null | void;
-    source: string | null | void;
-    data_as_of: DateOrString | null | void;
-    data_loaded_at: DateOrString | null | void;
-    lat: number | null | void;
-    long: number | null | void;
-    media_url: string | null | void;
-  }[];
-}
+/** Query 'FindAllServiceRequestsByDate' is invalid, so its result is assigned type 'never'.
+ *  */
+export type IFindAllServiceRequestsByDateResult = never;
 
-/** 'CreateServiceRequests' return type */
-export type ICreateServiceRequestsResult = void;
+/** Query 'FindAllServiceRequestsByDate' is invalid, so its parameters are assigned type 'never'.
+ *  */
+export type IFindAllServiceRequestsByDateParams = never;
 
-/** 'CreateServiceRequests' query type */
-export interface ICreateServiceRequestsQuery {
-  params: ICreateServiceRequestsParams;
-  result: ICreateServiceRequestsResult;
-}
+const findAllServiceRequestsByDateIR: any = {
+  usedParamSet: { date_start: true, date_end: true },
+  params: [
+    {
+      name: "date_start",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 75, b: 85 }],
+    },
+    {
+      name: "date_end",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 91, b: 99 }],
+    },
+  ],
+  statement:
+    "SELECT * \n  FROM service_requests \n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT *
+ *   FROM service_requests
+ *  WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
+ * ```
+ */
+export const findAllServiceRequestsByDate = new PreparedQuery<
+  IFindAllServiceRequestsByDateParams,
+  IFindAllServiceRequestsByDateResult
+>(findAllServiceRequestsByDateIR);
+
+/** Query 'CreateServiceRequests' is invalid, so its result is assigned type 'never'.
+ *  */
+export type ICreateServiceRequestsResult = never;
+
+/** Query 'CreateServiceRequests' is invalid, so its parameters are assigned type 'never'.
+ *  */
+export type ICreateServiceRequestsParams = never;
 
 const createServiceRequestsIR: any = {
   usedParamSet: { requests: true },
@@ -316,3 +252,46 @@ export const createServiceRequests = new PreparedQuery<
   ICreateServiceRequestsParams,
   ICreateServiceRequestsResult
 >(createServiceRequestsIR);
+
+/** Query 'CreateServiceRequestQueryTagsForMany' is invalid, so its result is assigned type 'never'.
+ *  */
+export type ICreateServiceRequestQueryTagsForManyResult = never;
+
+/** Query 'CreateServiceRequestQueryTagsForMany' is invalid, so its parameters are assigned type 'never'.
+ *  */
+export type ICreateServiceRequestQueryTagsForManyParams = never;
+
+const createServiceRequestQueryTagsForManyIR: any = {
+  usedParamSet: { service_requests: true },
+  params: [
+    {
+      name: "service_requests",
+      required: false,
+      transform: {
+        type: "pick_array_spread",
+        keys: [
+          { name: "service_request_id", required: false },
+          { name: "query_id", required: false },
+        ],
+      },
+      locs: [{ a: 87, b: 103 }],
+    },
+  ],
+  statement:
+    "INSERT INTO service_request_query_tags (\n    service_request_id,\n    query_id\n) VALUES :service_requests\nON CONFLICT (service_request_id, query_id) DO NOTHING",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * INSERT INTO service_request_query_tags (
+ *     service_request_id,
+ *     query_id
+ * ) VALUES :service_requests
+ * ON CONFLICT (service_request_id, query_id) DO NOTHING
+ * ```
+ */
+export const createServiceRequestQueryTagsForMany = new PreparedQuery<
+  ICreateServiceRequestQueryTagsForManyParams,
+  ICreateServiceRequestQueryTagsForManyResult
+>(createServiceRequestQueryTagsForManyIR);
