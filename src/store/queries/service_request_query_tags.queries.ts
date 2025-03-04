@@ -1,13 +1,24 @@
 /** Types generated for queries found in "src/store/queries/service_request_query_tags.sql" */
 import { PreparedQuery } from "@pgtyped/runtime";
 
-/** Query 'CreateServiceRequestQueryTags' is invalid, so its result is assigned type 'never'.
- *  */
-export type ICreateServiceRequestQueryTagsResult = never;
+export type DateOrString = Date | string;
 
-/** Query 'CreateServiceRequestQueryTags' is invalid, so its parameters are assigned type 'never'.
- *  */
-export type ICreateServiceRequestQueryTagsParams = never;
+/** 'CreateServiceRequestQueryTags' parameters type */
+export interface ICreateServiceRequestQueryTagsParams {
+  tags: readonly {
+    service_request_id: string | null | void;
+    query_id: string | null | void;
+  }[];
+}
+
+/** 'CreateServiceRequestQueryTags' return type */
+export type ICreateServiceRequestQueryTagsResult = void;
+
+/** 'CreateServiceRequestQueryTags' query type */
+export interface ICreateServiceRequestQueryTagsQuery {
+  params: ICreateServiceRequestQueryTagsParams;
+  result: ICreateServiceRequestQueryTagsResult;
+}
 
 const createServiceRequestQueryTagsIR: any = {
   usedParamSet: { tags: true },
@@ -44,13 +55,47 @@ export const createServiceRequestQueryTags = new PreparedQuery<
   ICreateServiceRequestQueryTagsResult
 >(createServiceRequestQueryTagsIR);
 
-/** Query 'FindServiceRequestsByQueryId' is invalid, so its result is assigned type 'never'.
- *  */
-export type IFindServiceRequestsByQueryIdResult = never;
+/** 'FindServiceRequestsByQueryId' parameters type */
+export interface IFindServiceRequestsByQueryIdParams {
+  date_end?: DateOrString | null | void;
+  date_start?: DateOrString | null | void;
+  query_id?: string | null | void;
+}
 
-/** Query 'FindServiceRequestsByQueryId' is invalid, so its parameters are assigned type 'never'.
- *  */
-export type IFindServiceRequestsByQueryIdParams = never;
+/** 'FindServiceRequestsByQueryId' return type */
+export interface IFindServiceRequestsByQueryIdResult {
+  address: string | null;
+  agency_responsible: string | null;
+  analysis_neighborhood: string | null;
+  closed_date: Date | null;
+  created_at: Date | null;
+  data_as_of: Date | null;
+  data_loaded_at: Date | null;
+  lat: number | null;
+  latlon: string | null;
+  long: number | null;
+  media_url: string | null;
+  neighborhoods_sffind_boundaries: string | null;
+  police_district: string | null;
+  requested_datetime: Date;
+  service_details: string | null;
+  service_name: string | null;
+  service_request_id: string;
+  service_subtype: string | null;
+  source: string | null;
+  status_description: string | null;
+  status_notes: string | null;
+  street: string | null;
+  supervisor_district: number | null;
+  updated_at: Date | null;
+  updated_datetime: Date | null;
+}
+
+/** 'FindServiceRequestsByQueryId' query type */
+export interface IFindServiceRequestsByQueryIdQuery {
+  params: IFindServiceRequestsByQueryIdParams;
+  result: IFindServiceRequestsByQueryIdResult;
+}
 
 const findServiceRequestsByQueryIdIR: any = {
   usedParamSet: { query_id: true, date_start: true, date_end: true },
@@ -93,13 +138,19 @@ export const findServiceRequestsByQueryId = new PreparedQuery<
   IFindServiceRequestsByQueryIdResult
 >(findServiceRequestsByQueryIdIR);
 
-/** Query 'DeleteServiceRequestQueryTags' is invalid, so its result is assigned type 'never'.
- *  */
-export type IDeleteServiceRequestQueryTagsResult = never;
+/** 'DeleteServiceRequestQueryTags' parameters type */
+export interface IDeleteServiceRequestQueryTagsParams {
+  service_request_id?: string | null | void;
+}
 
-/** Query 'DeleteServiceRequestQueryTags' is invalid, so its parameters are assigned type 'never'.
- *  */
-export type IDeleteServiceRequestQueryTagsParams = never;
+/** 'DeleteServiceRequestQueryTags' return type */
+export type IDeleteServiceRequestQueryTagsResult = void;
+
+/** 'DeleteServiceRequestQueryTags' query type */
+export interface IDeleteServiceRequestQueryTagsQuery {
+  params: IDeleteServiceRequestQueryTagsParams;
+  result: IDeleteServiceRequestQueryTagsResult;
+}
 
 const deleteServiceRequestQueryTagsIR: any = {
   usedParamSet: { service_request_id: true },

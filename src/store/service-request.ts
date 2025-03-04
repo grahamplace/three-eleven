@@ -3,10 +3,7 @@ import * as queries from "@/store/queries/service_request.queries";
 import { ServiceRequest } from "@/entities";
 import { supportedMediaDomains } from "@/lib/config";
 import { firstEntity } from "./utils";
-import {
-  createQueryTags,
-  createQueryTagsForMany,
-} from "./service-request-query-tags";
+import { createQueryTagsForMany } from "./service-request-query-tags";
 
 export async function getLatestUpdatedDatetimeFromPg() {
   const pgLatestUpdatedDatetime = await queries.getLatestUpdatedDatetime.run(
