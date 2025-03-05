@@ -348,7 +348,7 @@ export default function ServiceRequestDetail({
           onOpenChange={(open) => !open && handleUnsetSelectedRequest()}
           shouldScaleBackground={false}
         >
-          <DrawerContent className="max-h-[98vh] overflow-hidden">
+          <DrawerContent className="max-h-[85vh] overflow-hidden">
             <VisuallyHidden asChild>
               <DrawerHeader className="flex justify-between items-center">
                 <DrawerTitle className="transition-colors duration-200 ">
