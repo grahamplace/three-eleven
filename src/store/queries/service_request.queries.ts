@@ -184,6 +184,80 @@ export const findServiceRequestByDateAndType = new PreparedQuery<
   IFindServiceRequestByDateAndTypeResult
 >(findServiceRequestByDateAndTypeIR);
 
+/** 'FindAllServiceRequestsByDate' parameters type */
+export interface IFindAllServiceRequestsByDateParams {
+  date_end?: DateOrString | null | void;
+  date_start?: DateOrString | null | void;
+}
+
+/** 'FindAllServiceRequestsByDate' return type */
+export interface IFindAllServiceRequestsByDateResult {
+  address: string | null;
+  agency_responsible: string | null;
+  analysis_neighborhood: string | null;
+  closed_date: Date | null;
+  created_at: Date | null;
+  data_as_of: Date | null;
+  data_loaded_at: Date | null;
+  lat: number | null;
+  latlon: string | null;
+  long: number | null;
+  media_url: string | null;
+  neighborhoods_sffind_boundaries: string | null;
+  police_district: string | null;
+  requested_datetime: Date;
+  service_details: string | null;
+  service_name: string | null;
+  service_request_id: string;
+  service_subtype: string | null;
+  source: string | null;
+  status_description: string | null;
+  status_notes: string | null;
+  street: string | null;
+  supervisor_district: number | null;
+  updated_at: Date | null;
+  updated_datetime: Date | null;
+}
+
+/** 'FindAllServiceRequestsByDate' query type */
+export interface IFindAllServiceRequestsByDateQuery {
+  params: IFindAllServiceRequestsByDateParams;
+  result: IFindAllServiceRequestsByDateResult;
+}
+
+const findAllServiceRequestsByDateIR: any = {
+  usedParamSet: { date_start: true, date_end: true },
+  params: [
+    {
+      name: "date_start",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 75, b: 85 }],
+    },
+    {
+      name: "date_end",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 91, b: 99 }],
+    },
+  ],
+  statement:
+    "SELECT * \n  FROM service_requests \n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT *
+ *   FROM service_requests
+ *  WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
+ * ```
+ */
+export const findAllServiceRequestsByDate = new PreparedQuery<
+  IFindAllServiceRequestsByDateParams,
+  IFindAllServiceRequestsByDateResult
+>(findAllServiceRequestsByDateIR);
+
 /** 'CreateServiceRequests' parameters type */
 export interface ICreateServiceRequestsParams {
   requests: readonly {
@@ -316,3 +390,55 @@ export const createServiceRequests = new PreparedQuery<
   ICreateServiceRequestsParams,
   ICreateServiceRequestsResult
 >(createServiceRequestsIR);
+
+/** 'CreateServiceRequestQueryTagsForMany' parameters type */
+export interface ICreateServiceRequestQueryTagsForManyParams {
+  service_requests: readonly {
+    service_request_id: string | null | void;
+    query_id: string | null | void;
+  }[];
+}
+
+/** 'CreateServiceRequestQueryTagsForMany' return type */
+export type ICreateServiceRequestQueryTagsForManyResult = void;
+
+/** 'CreateServiceRequestQueryTagsForMany' query type */
+export interface ICreateServiceRequestQueryTagsForManyQuery {
+  params: ICreateServiceRequestQueryTagsForManyParams;
+  result: ICreateServiceRequestQueryTagsForManyResult;
+}
+
+const createServiceRequestQueryTagsForManyIR: any = {
+  usedParamSet: { service_requests: true },
+  params: [
+    {
+      name: "service_requests",
+      required: false,
+      transform: {
+        type: "pick_array_spread",
+        keys: [
+          { name: "service_request_id", required: false },
+          { name: "query_id", required: false },
+        ],
+      },
+      locs: [{ a: 87, b: 103 }],
+    },
+  ],
+  statement:
+    "INSERT INTO service_request_query_tags (\n    service_request_id,\n    query_id\n) VALUES :service_requests\nON CONFLICT (service_request_id, query_id) DO NOTHING",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * INSERT INTO service_request_query_tags (
+ *     service_request_id,
+ *     query_id
+ * ) VALUES :service_requests
+ * ON CONFLICT (service_request_id, query_id) DO NOTHING
+ * ```
+ */
+export const createServiceRequestQueryTagsForMany = new PreparedQuery<
+  ICreateServiceRequestQueryTagsForManyParams,
+  ICreateServiceRequestQueryTagsForManyResult
+>(createServiceRequestQueryTagsForManyIR);

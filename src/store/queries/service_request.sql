@@ -10,6 +10,11 @@ SELECT *
  WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
    AND service_details = ANY(:service_details);
 
+/* @name FindAllServiceRequestsByDate */
+SELECT * 
+  FROM service_requests 
+ WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end;
+
 /* @name CreateServiceRequests
    @param requests -> ((
      service_request_id,
@@ -82,3 +87,16 @@ ON CONFLICT (service_request_id) DO UPDATE SET
     lat = EXCLUDED.lat,
     long = EXCLUDED.long,
     media_url = EXCLUDED.media_url;
+
+/* @name CreateServiceRequestQueryTagsForMany
+   @param service_requests -> ((
+     service_request_id,
+     query_id
+   )...)
+*/
+INSERT INTO service_request_query_tags (
+    service_request_id,
+    query_id
+) VALUES :service_requests
+ON CONFLICT (service_request_id, query_id) DO NOTHING;
+

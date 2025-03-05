@@ -9,6 +9,7 @@ import { useMapContext } from "@/contexts/MapContext";
 import DateRangePickerWithRange from "@/components/DatePickerWithRange";
 import { RecenterButton } from "@/components/RecenterButton";
 import { LocationButton } from "./LocationButton";
+import { QueryFilterSelector } from "./QueryFilterSelector";
 interface ServiceRequestDrawerProps {
   selectedRequest: ServiceRequestDTOThin | null;
   selectedRequestData: ServiceRequest | null;
@@ -49,6 +50,8 @@ export default function ServiceRequestDetail({
   return (
     <>
       <div className="fixed right-4 top-4 z-50 flex items-center gap-2 bg-background/95 p-2 rounded-lg shadow-lg">
+        <QueryFilterSelector />
+
         <DateRangePickerWithRange />
         <ModeToggle />
         <RecenterButton />

@@ -3,6 +3,7 @@ import * as queries from "@/store/queries/service_request.queries";
 import { ServiceRequest } from "@/entities";
 import { supportedMediaDomains } from "@/lib/config";
 import { firstEntity } from "./utils";
+import { createQueryTagsForMany } from "./service-request-query-tags";
 
 export async function getLatestUpdatedDatetimeFromPg() {
   const pgLatestUpdatedDatetime = await queries.getLatestUpdatedDatetime.run(
@@ -69,11 +70,26 @@ export const createMany = async (
       { requests: mappedRequests },
       db
     );
+
+    // After creating the service requests, create the query tags
+    await createQueryTagsForMany(serviceRequests as ServiceRequest[]);
+
     return result;
   } catch (error) {
     console.error("Error upserting service requests:", error);
     throw error;
   }
+};
+
+export const findAll = async (dateStart: string, dateEnd: string) => {
+  const results = await queries.findAllServiceRequestsByDate.run(
+    {
+      date_start: dateStart,
+      date_end: dateEnd,
+    },
+    db
+  );
+  return results.map(storeToEntity);
 };
 
 function storeToEntity(

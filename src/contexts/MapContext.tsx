@@ -24,6 +24,8 @@ interface MapContextType {
     end: string;
   };
   setDateRange: (range: { start: string; end: string }) => void;
+  selectedQuery: string | null;
+  setSelectedQuery: (queryId: string | null) => void;
 }
 
 const MapContext = createContext<MapContextType | undefined>(undefined);
@@ -36,6 +38,7 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
   const currentRequestId = searchParams.get("id");
   const currentStart = searchParams.get("start");
   const currentEnd = searchParams.get("end");
+  const currentQuery = searchParams.get("query");
 
   // Validate and get mode from URL or use default
   const getValidMode = (mode: string | null): MapMode => {
@@ -51,6 +54,7 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
     id?: string | null;
     start?: string;
     end?: string;
+    query?: string | null;
   }) => {
     const newParams = new URLSearchParams(searchParams.toString());
 
@@ -74,6 +78,12 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
       newParams.set("end", params.end);
     }
 
+    if (params.query === null) {
+      newParams.delete("query");
+    } else if (params.query) {
+      newParams.set("query", params.query);
+    }
+
     router.push(`?${newParams.toString()}`, { scroll: false });
   };
 
@@ -87,6 +97,10 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
 
   const setDateRange = (range: { start: string; end: string }) => {
     updateURL({ start: range.start, end: range.end });
+  };
+
+  const setSelectedQuery = (queryId: string | null) => {
+    updateURL({ query: queryId });
   };
 
   // Set initial mode in URL if not present
@@ -111,6 +125,8 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
           end: currentEnd || defaultRange.end,
         },
         setDateRange,
+        selectedQuery: currentQuery,
+        setSelectedQuery,
       }}
     >
       {children}
