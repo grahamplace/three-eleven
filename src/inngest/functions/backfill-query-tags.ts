@@ -57,7 +57,7 @@ export const weeklyBackfillScheduler = inngest.createFunction(
 export const processBatchFunction = inngest.createFunction(
   {
     id: "process-backfill-batch",
-    concurrency: 20,
+    concurrency: 1,
   },
   { event: EVENTS.PROCESS_BATCH },
   async ({ event, step, logger }) => {

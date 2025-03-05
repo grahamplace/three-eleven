@@ -52,6 +52,78 @@ export const PREDEFINED_QUERIES: Record<string, QueryDefinition> = {
       },
     ],
   },
+  graffiti: {
+    id: "graffiti",
+    name: "Graffiti",
+    description: "Service requests related to graffiti",
+    rules: [
+      {
+        field: "service_name",
+        operator: "in",
+        value: ["Graffiti", "Graffiti Public", "Graffiti Private"],
+      },
+    ],
+  },
+  encampments: {
+    id: "encampments",
+    name: "Encampments",
+    description: "Service requests related to encampments",
+    rules: [
+      {
+        field: "service_name",
+        operator: "in",
+        value: ["Encampments", "Encampment"],
+      },
+    ],
+  },
+  parking_enforcement: {
+    id: "parking_enforcement",
+    name: "Parking Enforcement",
+    description: "Service requests related to parking enforcement",
+    rules: [
+      {
+        field: "service_name",
+        operator: "in",
+        value: ["Parking Enforcement"],
+      },
+    ],
+  },
+  street_and_sidewalk_cleaning: {
+    id: "street_and_sidewalk_cleaning",
+    name: "Street and Sidewalk Cleaning",
+    description: "Service requests related to street and sidewalk cleaning",
+    rules: [
+      {
+        field: "service_name",
+        operator: "in",
+        value: ["Street and Sidewalk Cleaning"],
+      },
+    ],
+  },
+  abandoned_vehicles: {
+    id: "abandoned_vehicles",
+    name: "Abandoned Vehicles",
+    description: "Service requests related to abandoned vehicles",
+    rules: [
+      {
+        field: "service_name",
+        operator: "in",
+        value: ["Abandoned Vehicle"],
+      },
+    ],
+  },
+  tree_maintenance: {
+    id: "tree_maintenance",
+    name: "Tree Maintenance",
+    description: "Service requests related to tree maintenance",
+    rules: [
+      {
+        field: "service_name",
+        operator: "in",
+        value: ["Tree Maintenance"],
+      },
+    ],
+  },
 };
 
 export function evaluateServiceRequestAgainstQuery(
