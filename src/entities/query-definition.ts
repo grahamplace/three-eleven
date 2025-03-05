@@ -16,6 +16,8 @@ export type QueryRule = {
   value: string | string[];
 };
 
+// After adding a new query, manually trigger the backfill function to add the query tags to the database
+// Otherwise, the query will not apply until the first of the month
 export const PREDEFINED_QUERIES: Record<string, QueryDefinition> = {
   poop: {
     id: "poop",
