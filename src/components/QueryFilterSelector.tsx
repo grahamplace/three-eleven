@@ -52,7 +52,7 @@ export function QueryFilterSelector() {
 
   return (
     <Select value={value} onValueChange={handleValueChange} disabled={loading}>
-      <SelectTrigger className="w-[200px]">
+      <SelectTrigger className="w-full md:w-[200px]">
         <SelectValue placeholder="Select a filter" />
       </SelectTrigger>
       <SelectContent>
