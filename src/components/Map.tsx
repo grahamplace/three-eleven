@@ -181,10 +181,39 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     });
     setSelectedRequestId(requestId);
 
-    map?.flyTo({
-      center: [longitude, latitude],
-      duration: 500,
-    });
+    if (map) {
+      if (isDesktop) {
+        // For desktop with sidebar, we need to offset the center
+        const SIDEBAR_WIDTH = 400; // Width of the sidebar in pixels
+
+        // Get the current viewport dimensions
+        const viewportWidth = map.getContainer().offsetWidth;
+
+        // Calculate the pixel offset needed (half the sidebar width)
+        const pixelOffsetX = SIDEBAR_WIDTH / 2;
+
+        // Convert the clicked point to pixel coordinates
+        const pointPixel = map.project([longitude, latitude]);
+
+        // Apply the offset in pixels
+        pointPixel.x -= pixelOffsetX;
+
+        // Convert back to geographic coordinates
+        const offsetPoint = map.unproject(pointPixel);
+
+        // Fly to the offset point
+        map.flyTo({
+          center: offsetPoint,
+          duration: 500,
+        });
+      } else {
+        // For mobile, just fly to the exact point
+        map.flyTo({
+          center: [longitude, latitude],
+          duration: 500,
+        });
+      }
+    }
   };
 
   return (
