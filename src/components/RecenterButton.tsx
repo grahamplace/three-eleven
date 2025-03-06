@@ -15,7 +15,7 @@ export function RecenterButton() {
   return (
     <button
       onClick={handleRecenter}
-      className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      className="p-2 rounded-lg md:hover:bg-gray-100 dark:md:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors"
       aria-label="Recenter map"
     >
       <MapIcon className="h-5 w-5" />

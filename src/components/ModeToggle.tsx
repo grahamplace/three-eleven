@@ -31,7 +31,7 @@ export function ModeToggle() {
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="p-2 rounded-lg md:hover:bg-gray-100 dark:md:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors"
         aria-label="Toggle map mode"
       >
         <Square3Stack3DIcon className="h-5 w-5" />
@@ -43,7 +43,7 @@ export function ModeToggle() {
             {modes.map((m) => (
               <label
                 key={m.value}
-                className="flex items-center space-x-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="flex items-center space-x-2 p-2 rounded-lg cursor-pointer md:hover:bg-gray-100 dark:md:hover:bg-gray-700"
               >
                 <input
                   type="radio"

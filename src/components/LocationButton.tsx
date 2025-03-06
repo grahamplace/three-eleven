@@ -74,7 +74,7 @@ export function LocationButton() {
         setIsLocating(false);
       },
       {
-        enableHighAccuracy: true,
+        enableHighAccuracy: false,
         timeout: 10000,
         maximumAge: 0,
       }
@@ -85,7 +85,7 @@ export function LocationButton() {
     <button
       onClick={handleGetLocation}
       disabled={isLocating}
-      className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="p-2 rounded-lg md:hover:bg-gray-100 dark:md:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       aria-label="Center map on my location"
     >
       <MapPinIcon className={`h-5 w-5 ${isLocating ? "animate-pulse" : ""}`} />
