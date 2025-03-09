@@ -10,10 +10,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { format, subDays } from "date-fns";
 
 const getDefaultDateRange = () => {
-  const yesterday = subDays(new Date(), 1);
-  const thirtyOneDaysAgo = subDays(yesterday, 31);
+  const yesterday = subDays(new Date(), 0);
+  const sevenDaysAgo = subDays(yesterday, 6);
   return {
-    start: format(thirtyOneDaysAgo, "yyyy-MM-dd"),
+    start: format(sevenDaysAgo, "yyyy-MM-dd"),
     end: format(yesterday, "yyyy-MM-dd"),
   };
 };
