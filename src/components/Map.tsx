@@ -74,7 +74,6 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
 
   const { map } = useMap();
 
-  // Add new state for zoom level
   const [zoom, setZoom] = useState(11.5);
 
   useEffect(() => {

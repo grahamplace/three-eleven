@@ -17,11 +17,11 @@ const presets = [
     label: "T7",
     days: 7,
     getRange: () => {
-      const today = new Date();
-      const sevenDaysAgo = subDays(today, 7);
+      const yesterday = subDays(new Date(), 1);
+      const sixDaysAgo = subDays(yesterday, 6);
       return {
-        from: sevenDaysAgo,
-        to: today,
+        from: sixDaysAgo,
+        to: yesterday,
       };
     },
   },
@@ -29,11 +29,11 @@ const presets = [
     label: "T30",
     days: 30,
     getRange: () => {
-      const today = new Date();
-      const thirtyDaysAgo = subDays(today, 30);
+      const yesterday = subDays(new Date(), 1);
+      const thirtyDaysAgo = subDays(yesterday, 30);
       return {
         from: thirtyDaysAgo,
-        to: today,
+        to: yesterday,
       };
     },
   },
@@ -41,11 +41,11 @@ const presets = [
     label: "T90",
     days: 90,
     getRange: () => {
-      const today = new Date();
-      const ninetyDaysAgo = subDays(today, 90);
+      const yesterday = subDays(new Date(), 1);
+      const ninetyDaysAgo = subDays(yesterday, 90);
       return {
         from: ninetyDaysAgo,
-        to: today,
+        to: yesterday,
       };
     },
   },
@@ -53,22 +53,22 @@ const presets = [
     label: "1Y",
     days: 365,
     getRange: () => {
-      const today = new Date();
-      const oneYearAgo = subYears(today, 1);
+      const yesterday = subDays(new Date(), 1);
+      const oneYearAgo = subYears(yesterday, 1);
       return {
         from: oneYearAgo,
-        to: today,
+        to: yesterday,
       };
     },
   },
   {
     label: "YTD",
     getRange: () => {
-      const today = new Date();
-      const startOfYear = new Date(today.getFullYear(), 0, 1); // January 1st of current year
+      const yesterday = subDays(new Date(), 1);
+      const startOfYear = new Date(yesterday.getFullYear(), 0, 1); // January 1st of current year
       return {
         from: startOfYear,
-        to: today,
+        to: yesterday,
       };
     },
   },
