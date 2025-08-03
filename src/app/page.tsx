@@ -1,6 +1,6 @@
 import { getLatestUpdatedDatetime } from "@/store/metadata";
 import "server-only";
-import Map from "../components/Map";
+import Map from "@/components/Map";
 import { envobj, string } from "envobj";
 
 const env = envobj(
