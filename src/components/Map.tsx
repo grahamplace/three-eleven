@@ -22,7 +22,6 @@ import { useTheme } from "next-themes";
 import { binPointsToHexagons } from "@/lib/h3";
 import { useMapContext } from "@/contexts/MapContext";
 import { Badge } from "./ui/badge";
-import { QueryFilterSelector } from "./QueryFilterSelector";
 
 export default function MapComponent({
   token,
