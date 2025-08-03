@@ -1,5 +1,6 @@
 import pg from "pg";
 import { envobj, string } from "envobj";
+import type { QueryConfigValues } from "pg";
 
 const { Client } = pg;
 
@@ -15,8 +16,10 @@ export const env = envobj(
   }
 );
 
+type QueryParams = (string | number | boolean | Date | null | undefined)[];
+
 export const db = {
-  query: async (query: string, bindings: any[]) => {
+  query: async (query: string, bindings: QueryConfigValues<QueryParams>) => {
     const result = await client.query(query, bindings);
     return { rows: result.rows };
   },

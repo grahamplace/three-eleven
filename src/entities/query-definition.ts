@@ -16,6 +16,15 @@ export type QueryRule = {
   value: string | string[];
 };
 
+// Type for service request fields that can be queried
+type QueryableServiceRequestFields = {
+  service_details: string | null;
+  service_name: string | null;
+  service_subtype: string | null;
+  status_description: string | null;
+  agency_responsible: string | null;
+};
+
 // After adding a new query, manually trigger the backfill function to add the query tags to the database
 // Otherwise, the query will not apply until the first of the month
 export const PREDEFINED_QUERIES: Record<string, QueryDefinition> = {
@@ -127,7 +136,7 @@ export const PREDEFINED_QUERIES: Record<string, QueryDefinition> = {
 };
 
 export function evaluateServiceRequestAgainstQuery(
-  serviceRequest: any,
+  serviceRequest: QueryableServiceRequestFields,
   queryDefinition: QueryDefinition
 ): boolean {
   // A service request matches if it satisfies ANY of the rules
@@ -157,7 +166,9 @@ export function evaluateServiceRequestAgainstQuery(
   });
 }
 
-export function getMatchingQueryIds(serviceRequest: any): string[] {
+export function getMatchingQueryIds(
+  serviceRequest: QueryableServiceRequestFields
+): string[] {
   return Object.values(PREDEFINED_QUERIES)
     .filter((query) =>
       evaluateServiceRequestAgainstQuery(serviceRequest, query)

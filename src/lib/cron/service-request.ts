@@ -14,10 +14,36 @@ const DELAY_MS = 500;
 // It takes ~1.5s per batch. 20 batches is ~30s. Vercel free plan has max timeout limit of 60s.
 const MAX_BATCHES_PER_RUN = 20;
 
+// Type for raw API response from SF 311 data
+type RawServiceRequestData = {
+  service_request_id: string;
+  requested_datetime: string;
+  closed_date: string | null;
+  updated_datetime: string | null;
+  status_description: string | null;
+  status_notes: string | null;
+  agency_responsible: string | null;
+  service_name: string | null;
+  service_subtype: string | null;
+  service_details: string | null;
+  address: string | null;
+  street: string | null;
+  supervisor_district: string | null;
+  neighborhoods_sffind_boundaries: string | null;
+  analysis_neighborhood: string | null;
+  police_district: string | null;
+  source: string | null;
+  data_as_of: string | null;
+  data_loaded_at: string | null;
+  lat: string | null;
+  long: string | null;
+  media_url: { url: string } | null;
+};
+
 async function fetchDataChunk(
   offset: number,
   latestUpdatedDatetime: Date
-): Promise<any[]> {
+): Promise<RawServiceRequestData[]> {
   const formattedDate = latestUpdatedDatetime.toISOString().slice(0, 23);
   const query =
     `$limit=${BATCH_SIZE}` +
@@ -84,7 +110,7 @@ export async function ingestServiceRequests() {
 }
 
 function transformData(
-  rawData: any[]
+  rawData: RawServiceRequestData[]
 ): Omit<ServiceRequest, "created_at" | "updated_at">[] {
   return rawData.map((item) => ({
     service_request_id: item.service_request_id,
@@ -111,8 +137,8 @@ function transformData(
     source: item.source || null,
     data_as_of: item.data_as_of ? new Date(item.data_as_of) : null,
     data_loaded_at: item.data_loaded_at ? new Date(item.data_loaded_at) : null,
-    lat: item.lat || item.lat === 0 ? parseFloat(item.lat) : null,
-    long: item.long || item.long === 0 ? parseFloat(item.long) : null,
+    lat: item.lat ? parseFloat(item.lat) : null,
+    long: item.long ? parseFloat(item.long) : null,
     media_url: item.media_url?.url || null,
   }));
 }
