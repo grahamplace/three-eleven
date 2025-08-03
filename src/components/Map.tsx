@@ -22,6 +22,7 @@ import { useTheme } from "next-themes";
 import { binPointsToHexagons } from "@/lib/h3";
 import { useMapContext } from "@/contexts/MapContext";
 import { Badge } from "./ui/badge";
+import { toast } from "sonner";
 
 export default function MapComponent({
   token,
@@ -48,6 +49,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     selectedQuery,
   } = useMapContext();
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [points, setPoints] = useState<ServiceRequestDTOThin[]>([]);
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
@@ -78,6 +80,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         let data: ServiceRequestDTOThin[];
 
@@ -99,7 +102,12 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
 
         setPoints(data);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch service request data";
+        setError(errorMessage);
+        toast.error("Failed to load map data. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -112,10 +120,18 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     const fetchRequestDetails = async () => {
       if (selectedRequest?.serviceRequestId) {
         setSelectedRequestData(null);
-        const data = await getServiceRequestById(
-          selectedRequest.serviceRequestId
-        );
-        setSelectedRequestData(data);
+        try {
+          const data = await getServiceRequestById(
+            selectedRequest.serviceRequestId
+          );
+          setSelectedRequestData(data);
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch request details";
+          toast.error("Failed to load request details. Please try again.");
+        }
       } else {
         setSelectedRequestData(null);
       }
