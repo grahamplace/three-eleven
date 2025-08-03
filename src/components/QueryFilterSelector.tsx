@@ -26,7 +26,6 @@ export function QueryFilterSelector() {
     const fetchQueries = async () => {
       try {
         const data = await getPredefinedQueries();
-        console.log("Fetched queries:", data);
         // Add an "All" option at the beginning
         setQueries([
           { id: "all", name: "All", description: "Show all service requests" },
