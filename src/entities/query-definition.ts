@@ -99,7 +99,7 @@ export const PREDEFINED_QUERIES: Record<string, QueryDefinition> = {
   },
   street_and_sidewalk_cleaning: {
     id: "street_and_sidewalk_cleaning",
-    name: "Street and Sidewalk Cleaning",
+    name: "Street/Sidewalk Cleaning",
     description: "Service requests related to street and sidewalk cleaning",
     rules: [
       {
