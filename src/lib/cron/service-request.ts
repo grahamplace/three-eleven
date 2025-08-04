@@ -4,6 +4,17 @@ import {
   setLatestUpdatedDatetime,
 } from "@/store/metadata";
 import { ServiceRequest } from "@/entities";
+import { envobj, string } from "envobj";
+
+const env = envobj(
+  {
+    ENV: string,
+  },
+  process.env as Record<string, string | undefined>,
+  {
+    ENV: "development",
+  }
+);
 
 const API_BASE_URL = "https://data.sfgov.org/resource/vw6y-z8j6.json";
 // 50k is maximum allowed by SODA 2.1
@@ -11,8 +22,8 @@ const API_BASE_URL = "https://data.sfgov.org/resource/vw6y-z8j6.json";
 const BATCH_SIZE = 1000;
 const DELAY_MS = 500;
 
-// It takes ~1.5s per batch. 20 batches is ~30s. Vercel free plan has max timeout limit of 60s.
-const MAX_BATCHES_PER_RUN = 20;
+// It takes ~1.5s per batch. 20 batches is ~30s. Vercel free plan has max timeout limit of 60s. In dev, can run more batches per run.
+const MAX_BATCHES_PER_RUN = env.ENV === "development" ? 1000 : 20;
 
 // Type for raw API response from SF 311 data
 type RawServiceRequestData = {
