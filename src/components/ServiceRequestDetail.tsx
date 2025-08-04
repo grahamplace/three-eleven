@@ -10,7 +10,7 @@ import DateRangePickerWithRange from "@/components/DatePickerWithRange";
 import { RecenterButton } from "@/components/RecenterButton";
 import { LocationButton } from "./LocationButton";
 import { QueryFilterSelector } from "./QueryFilterSelector";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 interface ServiceRequestDrawerProps {
   selectedRequest: ServiceRequestDTOThin | null;
@@ -31,6 +31,21 @@ export default function ServiceRequestDetail({
   const isOpen = Boolean(selectedRequest);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [isImageOverlayOpen, setIsImageOverlayOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isImageOverlayOpen) {
+          setIsImageOverlayOpen(false);
+        } else if (isOpen) {
+          handleUnsetSelectedRequest();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isImageOverlayOpen, isOpen]);
 
   const content = (
     <>
