@@ -33,11 +33,11 @@ function Favicon() {
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Three Eleven",
-    description: "San Francisco 311 Data Explorer",
+    title: "sfdata.app",
+    description: "San Francisco. Visualized.",
     openGraph: {
-      title: "Three Eleven",
-      description: "San Francisco 311 Data Explorer",
+      title: "sfdata.app",
+      description: "San Francisco. Visualized.",
     },
   };
 }
