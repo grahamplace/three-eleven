@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { MapPinIcon } from "@heroicons/react/24/outline";
 import { useMap } from "react-map-gl";
 import { useState } from "react";

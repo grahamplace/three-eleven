@@ -1,18 +1,29 @@
 import { beforeAll, afterAll, afterEach, vi } from "vitest";
-import { setupServer } from "msw/node";
-import { handlers } from "./mocks/handlers";
 
-// Set up MSW server for API mocking
-export const server = setupServer(...handlers);
+// MSW setup will be handled in individual test files as needed
 
-// Start server before all tests
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+// Mock React for Node environment
+vi.mock("react", () => ({
+  default: {
+    createElement: vi.fn(),
+    Fragment: Symbol("Fragment"),
+  },
+  createElement: vi.fn(),
+  Fragment: Symbol("Fragment"),
+}));
 
-// Reset handlers after each test
-afterEach(() => server.resetHandlers());
-
-// Close server after all tests
-afterAll(() => server.close());
+// Mock React Testing Library for Node environment
+vi.mock("@testing-library/react", () => ({
+  render: vi.fn(),
+  screen: {
+    getByTestId: vi.fn(),
+    getByText: vi.fn(),
+  },
+  fireEvent: {
+    click: vi.fn(),
+  },
+  waitFor: vi.fn(),
+}));
 
 // Environment shims for testing
 // Note: NODE_ENV is typically set by the test runner, so we don't override it

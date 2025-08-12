@@ -8,8 +8,8 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "node",
-    setupFiles: ["./src/test/setup.node.ts"],
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.dom.ts"],
     include: [
       "src/entities/**/*.test.ts",
       "src/lib/**/*.test.ts",

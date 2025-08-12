@@ -1,3 +1,4 @@
+import React from "react";
 import { Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useState, useRef, useEffect } from "react";
 import { useMapContext, MapMode } from "@/contexts/MapContext";

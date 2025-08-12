@@ -1,19 +1,15 @@
 import { beforeAll, afterAll, afterEach, vi } from "vitest";
-import { setupWorker } from "msw/browser";
-import { handlers } from "./mocks/handlers";
-import "@testing-library/jest-dom";
 
-// Set up MSW worker for browser environment
-export const worker = setupWorker(...handlers);
+// Set up jest-dom matchers
+import "@testing-library/jest-dom/vitest";
 
-// Start worker before all tests
-beforeAll(() => worker.start({ onUnhandledRequest: "error" }));
+// Mock scrollIntoView for Radix UI components in jsdom
+Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+  value: vi.fn(),
+  writable: true,
+});
 
-// Reset handlers after each test
-afterEach(() => worker.resetHandlers());
-
-// Close worker after all tests
-afterAll(() => worker.stop());
+// MSW setup will be handled in individual test files as needed
 
 // Mock react-map-gl to avoid WebGL issues in tests
 vi.mock("react-map-gl", () => ({
