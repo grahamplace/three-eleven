@@ -231,7 +231,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
   };
 
   return (
-    <div className="relative h-screen w-full">
+    <div className="relative h-screen w-full" data-testid="map">
       <div className="h-full w-full flex flex-row">
         <div className="w-full">
           <div className="relative h-full">

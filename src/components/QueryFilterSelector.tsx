@@ -51,12 +51,19 @@ export function QueryFilterSelector() {
 
   return (
     <Select value={value} onValueChange={handleValueChange} disabled={loading}>
-      <SelectTrigger className="w-full md:w-[200px]">
+      <SelectTrigger
+        className="w-full md:w-[200px]"
+        data-testid="query-filter-selector"
+      >
         <SelectValue placeholder="Select a filter" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent data-testid="query-filter-options">
         {queries.map((query) => (
-          <SelectItem key={query.id} value={query.id}>
+          <SelectItem
+            key={query.id}
+            value={query.id}
+            data-testid={`query-option-${query.id}`}
+          >
             {query.name}
           </SelectItem>
         ))}

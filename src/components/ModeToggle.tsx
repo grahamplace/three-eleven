@@ -28,7 +28,11 @@ export function ModeToggle() {
   }, []);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div
+      className="relative"
+      ref={containerRef}
+      data-testid="mode-toggle-buttons"
+    >
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 rounded-lg md:hover:bg-gray-100 dark:md:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors"

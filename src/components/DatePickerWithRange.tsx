@@ -106,7 +106,7 @@ export default function DatePickerWithRange() {
   };
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-2" data-testid="date-range-picker">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
