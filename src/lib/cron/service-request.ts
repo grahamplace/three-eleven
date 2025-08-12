@@ -120,7 +120,7 @@ export async function ingestServiceRequests() {
   }
 }
 
-function transformData(
+export function transformData(
   rawData: RawServiceRequestData[]
 ): Omit<ServiceRequest, "created_at" | "updated_at">[] {
   return rawData.map((item) => ({
