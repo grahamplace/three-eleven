@@ -112,7 +112,7 @@ export default function DatePickerWithRange() {
           <Button
             variant="outline"
             className={cn(
-              "justify-start text-left font-normal",
+              "justify-start text-left font-normal min-w-[240px] w-full",
               !date && "text-muted-foreground"
             )}
           >
@@ -168,7 +168,12 @@ export default function DatePickerWithRange() {
                   start: format(newDate.from, "yyyy-MM-dd"),
                   end: format(newDate.to, "yyyy-MM-dd"),
                 });
-                setOpen(false);
+              }
+              if (newDate?.from && !newDate?.to) {
+                setDateRange({
+                  start: format(newDate.from, "yyyy-MM-dd"),
+                  end: format(newDate.from, "yyyy-MM-dd"),
+                });
               }
             }}
             numberOfMonths={2}
