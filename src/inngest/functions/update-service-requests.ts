@@ -6,7 +6,8 @@ export const updateServiceRequests = inngest.createFunction(
     id: "update-service-requests",
     concurrency: 1,
   },
-  { cron: "TZ=America/Los_Angeles */30 * * * *" },
+  // Run every 4 hours
+  { cron: "TZ=America/Los_Angeles */4 * * * *" },
   async ({ step }) => {
     await ingestServiceRequests();
   }
