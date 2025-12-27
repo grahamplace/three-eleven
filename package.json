@@ -54,6 +54,7 @@
     "react-dom": "^19.0.0",
     "react-map-gl": "^7.1.9",
     "redis": "^4.7.0",
+    "soda3-query": "^0.8.1",
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",

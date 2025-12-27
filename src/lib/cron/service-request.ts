@@ -5,6 +5,7 @@ import {
 } from "@/store/metadata";
 import { ServiceRequest } from "@/entities";
 import { envobj, string } from "envobj";
+import sfdataClient, { ResourceId } from "@/lib/sfdata";
 
 const env = envobj(
   {
@@ -16,7 +17,6 @@ const env = envobj(
   }
 );
 
-const API_BASE_URL = "https://data.sfgov.org/resource/vw6y-z8j6.json";
 // 50k is maximum allowed by SODA 2.1
 // 10k causes issues with Postgres bulk insert parameter limits
 const BATCH_SIZE = 1000;
@@ -56,21 +56,16 @@ async function fetchDataChunk(
   latestUpdatedDatetime: Date
 ): Promise<RawServiceRequestData[]> {
   const formattedDate = latestUpdatedDatetime.toISOString().slice(0, 23);
-  const query =
-    `$limit=${BATCH_SIZE}` +
-    `&$offset=${offset}` +
-    `&$where=updated_datetime > '${encodeURIComponent(formattedDate)}'` +
-    `&$order=updated_datetime ASC`;
-  const url = `${API_BASE_URL}?${query}`;
-  const response = await fetch(url);
 
-  if (!response.ok) {
-    throw new Error(
-      `HTTP error! status: ${response.status}, message: ${response.statusText}`
-    );
-  }
+  const result = await sfdataClient
+    .query(ResourceId.SERVICE_REQUESTS)
+    .where("updated_datetime", ">", formattedDate)
+    .orderBy("updated_datetime", "asc")
+    .limit(BATCH_SIZE)
+    .offset(offset)
+    .execute<RawServiceRequestData>();
 
-  return response.json();
+  return result.data;
 }
 
 export async function ingestServiceRequests() {
