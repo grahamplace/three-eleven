@@ -21,7 +21,7 @@ type QueryParams = (string | number | boolean | Date | null | undefined)[];
 export const db = {
   query: async (query: string, bindings: QueryConfigValues<QueryParams>) => {
     const result = await client.query(query, bindings);
-    return { rows: result.rows };
+    return { rows: result.rows, rowCount: result.rowCount ?? 0 };
   },
 };
 
