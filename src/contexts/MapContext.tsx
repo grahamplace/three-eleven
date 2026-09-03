@@ -1,37 +1,58 @@
 "use client";
-import React from "react";
-import {
+import React, {
   createContext,
-  useContext,
-  useEffect,
   Suspense,
+  useCallback,
+  useContext,
+  useMemo,
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format, subDays } from "date-fns";
 
-const getDefaultDateRange = () => {
-  const yesterday = subDays(new Date(), 0);
-  const sevenDaysAgo = subDays(yesterday, 6);
+export type MapMode = "points" | "heatmap" | "hexabin";
+const MODES: readonly MapMode[] = ["points", "heatmap", "hexabin"];
+const isMode = (v: string | null): v is MapMode =>
+  v !== null && (MODES as readonly string[]).includes(v);
+
+export type DateRange = { start: string; end: string };
+
+/**
+ * Trailing 7 days ending yesterday. Data is ingested nightly, so today never
+ * has rows; this also matches the T7 preset in the date picker.
+ */
+export const getDefaultDateRange = (): DateRange => {
+  const yesterday = subDays(new Date(), 1);
   return {
-    start: format(sevenDaysAgo, "yyyy-MM-dd"),
+    start: format(subDays(yesterday, 6), "yyyy-MM-dd"),
     end: format(yesterday, "yyyy-MM-dd"),
   };
 };
 
-export type MapMode = "points" | "heatmap" | "hexabin";
-
-interface MapContextType {
+type MapState = {
   mode: MapMode;
-  setMode: (mode: MapMode) => void;
   selectedRequestId: string | null;
-  setSelectedRequestId: (id: string | null) => void;
-  dateRange: {
-    start: string;
-    end: string;
-  };
-  setDateRange: (range: { start: string; end: string }) => void;
+  dateRange: DateRange;
   selectedQuery: string | null;
+};
+
+/** Pure: derives the initial state from the URL so the first render is right. */
+export function readStateFromUrl(params: URLSearchParams): MapState {
+  const mode = params.get("mode");
+  const start = params.get("start");
+  const end = params.get("end");
+  return {
+    mode: isMode(mode) ? mode : "heatmap",
+    selectedRequestId: params.get("id") || null,
+    dateRange: start && end ? { start, end } : getDefaultDateRange(),
+    selectedQuery: params.get("query") || null,
+  };
+}
+
+interface MapContextType extends MapState {
+  setMode: (mode: MapMode) => void;
+  setSelectedRequestId: (id: string | null) => void;
+  setDateRange: (range: DateRange) => void;
   setSelectedQuery: (queryId: string | null) => void;
 }
 
@@ -41,130 +62,73 @@ function MapContextContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Initialize state from URL or defaults
-  const [initialized, setInitialized] = useState(false);
-  const [mode, setInternalMode] = useState<MapMode>("heatmap");
-  const [selectedRequestId, setInternalSelectedRequestId] = useState<
-    string | null
-  >(null);
-  const [dateRange, setInternalDateRange] = useState(getDefaultDateRange());
-  const [selectedQuery, setInternalSelectedQuery] = useState<string | null>(
-    null
+  // Read the URL synchronously on first render. Doing this in an effect
+  // meant one render (and one data fetch) with default state before the URL
+  // was applied.
+  const [state, setState] = useState<MapState>(() =>
+    readStateFromUrl(searchParams),
   );
 
-  // Effect to initialize state from URL once
-  useEffect(() => {
-    if (!initialized) {
-      const urlMode = searchParams.get("mode") as MapMode;
-      const urlId = searchParams.get("id");
-      const urlStart = searchParams.get("start");
-      const urlEnd = searchParams.get("end");
-      const urlQuery = searchParams.get("query");
-
-      // Only update state if URL parameters exist
-      if (urlMode || urlId || urlStart || urlEnd || urlQuery) {
-        if (urlMode && ["points", "heatmap", "hexabin"].includes(urlMode)) {
-          setInternalMode(urlMode);
-        }
-        if (urlId) {
-          setInternalSelectedRequestId(urlId);
-        }
-        if (urlStart && urlEnd) {
-          setInternalDateRange({ start: urlStart, end: urlEnd });
-        }
-        if (urlQuery) {
-          setInternalSelectedQuery(urlQuery);
-        }
-
-        // Update URL to match state (this will clean up any invalid URL params)
-        updateURL({
-          mode: urlMode as MapMode,
-          id: urlId,
-          start: urlStart || dateRange.start,
-          end: urlEnd || dateRange.end,
-          query: urlQuery,
-        });
+  const updateURL = useCallback(
+    (
+      params: Partial<
+        Record<"mode" | "id" | "start" | "end" | "query", string | null>
+      >,
+    ) => {
+      const next = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(params)) {
+        if (value === null) next.delete(key);
+        else if (value !== undefined) next.set(key, value);
       }
-
-      setInitialized(true);
-    }
-  }, [searchParams, initialized]);
-
-  const updateURL = (params: {
-    mode?: MapMode;
-    id?: string | null;
-    start?: string;
-    end?: string;
-    query?: string | null;
-  }) => {
-    // Start with existing params instead of creating new empty params
-    const newParams = new URLSearchParams(searchParams.toString());
-
-    // Update or remove parameters based on new values
-    if (params.mode) {
-      newParams.set("mode", params.mode);
-    }
-
-    if (params.id === null) {
-      newParams.delete("id");
-    } else if (params.id) {
-      newParams.set("id", params.id);
-    }
-
-    if (params.start) {
-      newParams.set("start", params.start);
-    }
-
-    if (params.end) {
-      newParams.set("end", params.end);
-    }
-
-    if (params.query === null) {
-      newParams.delete("query");
-    } else if (params.query) {
-      newParams.set("query", params.query);
-    }
-
-    router.push(`?${newParams.toString()}`, { scroll: false });
-  };
-
-  // State setters that also update URL
-  const setMode = (newMode: MapMode) => {
-    setInternalMode(newMode);
-    updateURL({ mode: newMode });
-  };
-
-  const setSelectedRequestId = (id: string | null) => {
-    setInternalSelectedRequestId(id);
-    updateURL({ id });
-  };
-
-  const setDateRange = (range: { start: string; end: string }) => {
-    setInternalDateRange(range);
-    updateURL({ start: range.start, end: range.end });
-  };
-
-  const setSelectedQuery = (queryId: string | null) => {
-    setInternalSelectedQuery(queryId);
-    updateURL({ query: queryId });
-  };
-
-  return (
-    <MapContext.Provider
-      value={{
-        mode,
-        setMode,
-        selectedRequestId,
-        setSelectedRequestId,
-        dateRange,
-        setDateRange,
-        selectedQuery,
-        setSelectedQuery,
-      }}
-    >
-      {children}
-    </MapContext.Provider>
+      router.push(`?${next.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
   );
+
+  const setMode = useCallback(
+    (mode: MapMode) => {
+      setState((s) => ({ ...s, mode }));
+      updateURL({ mode });
+    },
+    [updateURL],
+  );
+
+  const setSelectedRequestId = useCallback(
+    (id: string | null) => {
+      setState((s) => ({ ...s, selectedRequestId: id }));
+      updateURL({ id });
+    },
+    [updateURL],
+  );
+
+  const setDateRange = useCallback(
+    (dateRange: DateRange) => {
+      setState((s) => ({ ...s, dateRange }));
+      updateURL({ start: dateRange.start, end: dateRange.end });
+    },
+    [updateURL],
+  );
+
+  const setSelectedQuery = useCallback(
+    (query: string | null) => {
+      setState((s) => ({ ...s, selectedQuery: query }));
+      updateURL({ query });
+    },
+    [updateURL],
+  );
+
+  const value = useMemo<MapContextType>(
+    () => ({
+      ...state,
+      setMode,
+      setSelectedRequestId,
+      setDateRange,
+      setSelectedQuery,
+    }),
+    [state, setMode, setSelectedRequestId, setDateRange, setSelectedQuery],
+  );
+
+  return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
 }
 
 export function MapProvider({ children }: { children: React.ReactNode }) {

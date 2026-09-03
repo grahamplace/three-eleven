@@ -51,6 +51,11 @@ export interface IFindServiceRequestByIdResult {
   created_at: Date | null;
   data_as_of: Date | null;
   data_loaded_at: Date | null;
+  h3_r10: string | null;
+  h3_r11: string | null;
+  h3_r7: string | null;
+  h3_r8: string | null;
+  h3_r9: string | null;
   lat: number | null;
   latlon: string | null;
   long: number | null;
@@ -118,6 +123,11 @@ export interface IFindServiceRequestByDateAndTypeResult {
   created_at: Date | null;
   data_as_of: Date | null;
   data_loaded_at: Date | null;
+  h3_r10: string | null;
+  h3_r11: string | null;
+  h3_r7: string | null;
+  h3_r8: string | null;
+  h3_r9: string | null;
   lat: number | null;
   latlon: string | null;
   long: number | null;
@@ -151,23 +161,23 @@ const findServiceRequestByDateAndTypeIR: any = {
       name: "date_start",
       required: false,
       transform: { type: "scalar" },
-      locs: [{ a: 75, b: 85 }],
+      locs: [{ a: 73, b: 83 }],
     },
     {
       name: "date_end",
       required: false,
       transform: { type: "scalar" },
-      locs: [{ a: 91, b: 99 }],
+      locs: [{ a: 89, b: 97 }],
     },
     {
       name: "service_details",
       required: false,
       transform: { type: "scalar" },
-      locs: [{ a: 130, b: 145 }],
+      locs: [{ a: 128, b: 143 }],
     },
   ],
   statement:
-    "SELECT * \n  FROM service_requests \n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end\n   AND service_details = ANY(:service_details)",
+    "SELECT *\n  FROM service_requests\n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end\n   AND service_details = ANY(:service_details)",
 };
 
 /**
@@ -199,6 +209,11 @@ export interface IFindAllServiceRequestsByDateResult {
   created_at: Date | null;
   data_as_of: Date | null;
   data_loaded_at: Date | null;
+  h3_r10: string | null;
+  h3_r11: string | null;
+  h3_r7: string | null;
+  h3_r8: string | null;
+  h3_r9: string | null;
   lat: number | null;
   latlon: string | null;
   long: number | null;
@@ -232,17 +247,17 @@ const findAllServiceRequestsByDateIR: any = {
       name: "date_start",
       required: false,
       transform: { type: "scalar" },
-      locs: [{ a: 75, b: 85 }],
+      locs: [{ a: 73, b: 83 }],
     },
     {
       name: "date_end",
       required: false,
       transform: { type: "scalar" },
-      locs: [{ a: 91, b: 99 }],
+      locs: [{ a: 89, b: 97 }],
     },
   ],
   statement:
-    "SELECT * \n  FROM service_requests \n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end",
+    "SELECT *\n  FROM service_requests\n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end                                                                                  ",
 };
 
 /**
@@ -257,6 +272,273 @@ export const findAllServiceRequestsByDate = new PreparedQuery<
   IFindAllServiceRequestsByDateParams,
   IFindAllServiceRequestsByDateResult
 >(findAllServiceRequestsByDateIR);
+
+/** 'FindPointsByDate' parameters type */
+export interface IFindPointsByDateParams {
+  date_end?: DateOrString | null | void;
+  date_start?: DateOrString | null | void;
+}
+
+/** 'FindPointsByDate' return type */
+export interface IFindPointsByDateResult {
+  lat: number | null;
+  long: number | null;
+  service_request_id: string;
+}
+
+/** 'FindPointsByDate' query type */
+export interface IFindPointsByDateQuery {
+  params: IFindPointsByDateParams;
+  result: IFindPointsByDateResult;
+}
+
+const findPointsByDateIR: any = {
+  usedParamSet: { date_start: true, date_end: true },
+  params: [
+    {
+      name: "date_start",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 101, b: 111 }],
+    },
+    {
+      name: "date_end",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 117, b: 125 }],
+    },
+  ],
+  statement:
+    "SELECT service_request_id, lat, long\n  FROM service_requests\n WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end\n   AND lat IS NOT NULL AND long IS NOT NULL",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT service_request_id, lat, long
+ *   FROM service_requests
+ *  WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
+ *    AND lat IS NOT NULL AND long IS NOT NULL
+ * ```
+ */
+export const findPointsByDate = new PreparedQuery<
+  IFindPointsByDateParams,
+  IFindPointsByDateResult
+>(findPointsByDateIR);
+
+/** 'FindPointsByQueryId' parameters type */
+export interface IFindPointsByQueryIdParams {
+  date_end?: DateOrString | null | void;
+  date_start?: DateOrString | null | void;
+  query_id?: string | null | void;
+}
+
+/** 'FindPointsByQueryId' return type */
+export interface IFindPointsByQueryIdResult {
+  lat: number | null;
+  long: number | null;
+  service_request_id: string;
+}
+
+/** 'FindPointsByQueryId' query type */
+export interface IFindPointsByQueryIdQuery {
+  params: IFindPointsByQueryIdParams;
+  result: IFindPointsByQueryIdResult;
+}
+
+const findPointsByQueryIdIR: any = {
+  usedParamSet: { query_id: true, date_start: true, date_end: true },
+  params: [
+    {
+      name: "query_id",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 180, b: 188 }],
+    },
+    {
+      name: "date_start",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 233, b: 243 }],
+    },
+    {
+      name: "date_end",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 249, b: 257 }],
+    },
+  ],
+  statement:
+    "SELECT sr.service_request_id, sr.lat, sr.long\n  FROM service_requests sr\n  JOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id\n WHERE qt.query_id = :query_id\n   AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end\n   AND sr.lat IS NOT NULL AND sr.long IS NOT NULL",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT sr.service_request_id, sr.lat, sr.long
+ *   FROM service_requests sr
+ *   JOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id
+ *  WHERE qt.query_id = :query_id
+ *    AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end
+ *    AND sr.lat IS NOT NULL AND sr.long IS NOT NULL
+ * ```
+ */
+export const findPointsByQueryId = new PreparedQuery<
+  IFindPointsByQueryIdParams,
+  IFindPointsByQueryIdResult
+>(findPointsByQueryIdIR);
+
+/** 'CountByH3Cell' parameters type */
+export interface ICountByH3CellParams {
+  date_end?: DateOrString | null | void;
+  date_start?: DateOrString | null | void;
+  resolution?: number | null | void;
+}
+
+/** 'CountByH3Cell' return type */
+export interface ICountByH3CellResult {
+  count: number | null;
+  h3_cell: string | null;
+}
+
+/** 'CountByH3Cell' query type */
+export interface ICountByH3CellQuery {
+  params: ICountByH3CellParams;
+  result: ICountByH3CellResult;
+}
+
+const countByH3CellIR: any = {
+  usedParamSet: { resolution: true, date_start: true, date_end: true },
+  params: [
+    {
+      name: "resolution",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 64, b: 74 }],
+    },
+    {
+      name: "date_start",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 330, b: 340 }],
+    },
+    {
+      name: "date_end",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 346, b: 354 }],
+    },
+  ],
+  statement:
+    "SELECT h3_cell, COUNT(*)::int AS count\n  FROM (\n    SELECT CASE :resolution::int\n             WHEN 7 THEN h3_r7\n             WHEN 8 THEN h3_r8\n             WHEN 9 THEN h3_r9\n             WHEN 10 THEN h3_r10\n             ELSE h3_r11\n           END AS h3_cell\n      FROM service_requests\n     WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end\n  ) cells\n WHERE h3_cell IS NOT NULL\n GROUP BY h3_cell",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT h3_cell, COUNT(*)::int AS count
+ *   FROM (
+ *     SELECT CASE :resolution::int
+ *              WHEN 7 THEN h3_r7
+ *              WHEN 8 THEN h3_r8
+ *              WHEN 9 THEN h3_r9
+ *              WHEN 10 THEN h3_r10
+ *              ELSE h3_r11
+ *            END AS h3_cell
+ *       FROM service_requests
+ *      WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
+ *   ) cells
+ *  WHERE h3_cell IS NOT NULL
+ *  GROUP BY h3_cell
+ * ```
+ */
+export const countByH3Cell = new PreparedQuery<
+  ICountByH3CellParams,
+  ICountByH3CellResult
+>(countByH3CellIR);
+
+/** 'CountByH3CellForQuery' parameters type */
+export interface ICountByH3CellForQueryParams {
+  date_end?: DateOrString | null | void;
+  date_start?: DateOrString | null | void;
+  query_id?: string | null | void;
+  resolution?: number | null | void;
+}
+
+/** 'CountByH3CellForQuery' return type */
+export interface ICountByH3CellForQueryResult {
+  count: number | null;
+  h3_cell: string | null;
+}
+
+/** 'CountByH3CellForQuery' query type */
+export interface ICountByH3CellForQueryQuery {
+  params: ICountByH3CellForQueryParams;
+  result: ICountByH3CellForQueryResult;
+}
+
+const countByH3CellForQueryIR: any = {
+  usedParamSet: {
+    resolution: true,
+    query_id: true,
+    date_start: true,
+    date_end: true,
+  },
+  params: [
+    {
+      name: "resolution",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 64, b: 74 }],
+    },
+    {
+      name: "query_id",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 419, b: 427 }],
+    },
+    {
+      name: "date_start",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 476, b: 486 }],
+    },
+    {
+      name: "date_end",
+      required: false,
+      transform: { type: "scalar" },
+      locs: [{ a: 492, b: 500 }],
+    },
+  ],
+  statement:
+    "SELECT h3_cell, COUNT(*)::int AS count\n  FROM (\n    SELECT CASE :resolution::int\n             WHEN 7 THEN sr.h3_r7\n             WHEN 8 THEN sr.h3_r8\n             WHEN 9 THEN sr.h3_r9\n             WHEN 10 THEN sr.h3_r10\n             ELSE sr.h3_r11\n           END AS h3_cell\n      FROM service_requests sr\n      JOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id\n     WHERE qt.query_id = :query_id\n       AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end\n  ) cells\n WHERE h3_cell IS NOT NULL\n GROUP BY h3_cell",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT h3_cell, COUNT(*)::int AS count
+ *   FROM (
+ *     SELECT CASE :resolution::int
+ *              WHEN 7 THEN sr.h3_r7
+ *              WHEN 8 THEN sr.h3_r8
+ *              WHEN 9 THEN sr.h3_r9
+ *              WHEN 10 THEN sr.h3_r10
+ *              ELSE sr.h3_r11
+ *            END AS h3_cell
+ *       FROM service_requests sr
+ *       JOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id
+ *      WHERE qt.query_id = :query_id
+ *        AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end
+ *   ) cells
+ *  WHERE h3_cell IS NOT NULL
+ *  GROUP BY h3_cell
+ * ```
+ */
+export const countByH3CellForQuery = new PreparedQuery<
+  ICountByH3CellForQueryParams,
+  ICountByH3CellForQueryResult
+>(countByH3CellForQueryIR);
 
 /** 'CreateServiceRequests' parameters type */
 export interface ICreateServiceRequestsParams {
@@ -283,6 +565,11 @@ export interface ICreateServiceRequestsParams {
     lat: number | null | void;
     long: number | null | void;
     media_url: string | null | void;
+    h3_r7: string | null | void;
+    h3_r8: string | null | void;
+    h3_r9: string | null | void;
+    h3_r10: string | null | void;
+    h3_r11: string | null | void;
   }[];
 }
 
@@ -326,13 +613,18 @@ const createServiceRequestsIR: any = {
           { name: "lat", required: false },
           { name: "long", required: false },
           { name: "media_url", required: false },
+          { name: "h3_r7", required: false },
+          { name: "h3_r8", required: false },
+          { name: "h3_r9", required: false },
+          { name: "h3_r10", required: false },
+          { name: "h3_r11", required: false },
         ],
       },
-      locs: [{ a: 469, b: 477 }],
+      locs: [{ a: 526, b: 534 }],
     },
   ],
   statement:
-    "INSERT INTO service_requests (\n    service_request_id,\n    requested_datetime,\n    closed_date,\n    updated_datetime,\n    status_description,\n    status_notes,\n    agency_responsible,\n    service_name,\n    service_subtype,\n    service_details,\n    address,\n    street,\n    supervisor_district,\n    neighborhoods_sffind_boundaries,\n    analysis_neighborhood,\n    police_district,\n    source,\n    data_as_of,\n    data_loaded_at,\n    lat,\n    long,\n    media_url\n) VALUES :requests\nON CONFLICT (service_request_id) DO UPDATE SET\n    requested_datetime = EXCLUDED.requested_datetime,\n    closed_date = EXCLUDED.closed_date,\n    updated_datetime = EXCLUDED.updated_datetime,\n    status_description = EXCLUDED.status_description,\n    status_notes = EXCLUDED.status_notes,\n    agency_responsible = EXCLUDED.agency_responsible,\n    service_name = EXCLUDED.service_name,\n    service_subtype = EXCLUDED.service_subtype,\n    service_details = EXCLUDED.service_details,\n    address = EXCLUDED.address,\n    street = EXCLUDED.street,\n    supervisor_district = EXCLUDED.supervisor_district,\n    neighborhoods_sffind_boundaries = EXCLUDED.neighborhoods_sffind_boundaries,\n    analysis_neighborhood = EXCLUDED.analysis_neighborhood,\n    police_district = EXCLUDED.police_district,\n    source = EXCLUDED.source,\n    data_as_of = EXCLUDED.data_as_of,\n    data_loaded_at = EXCLUDED.data_loaded_at,\n    lat = EXCLUDED.lat,\n    long = EXCLUDED.long,\n    media_url = EXCLUDED.media_url",
+    "INSERT INTO service_requests (\n    service_request_id,\n    requested_datetime,\n    closed_date,\n    updated_datetime,\n    status_description,\n    status_notes,\n    agency_responsible,\n    service_name,\n    service_subtype,\n    service_details,\n    address,\n    street,\n    supervisor_district,\n    neighborhoods_sffind_boundaries,\n    analysis_neighborhood,\n    police_district,\n    source,\n    data_as_of,\n    data_loaded_at,\n    lat,\n    long,\n    media_url,\n    h3_r7,\n    h3_r8,\n    h3_r9,\n    h3_r10,\n    h3_r11\n) VALUES :requests\nON CONFLICT (service_request_id) DO UPDATE SET\n    requested_datetime = EXCLUDED.requested_datetime,\n    closed_date = EXCLUDED.closed_date,\n    updated_datetime = EXCLUDED.updated_datetime,\n    status_description = EXCLUDED.status_description,\n    status_notes = EXCLUDED.status_notes,\n    agency_responsible = EXCLUDED.agency_responsible,\n    service_name = EXCLUDED.service_name,\n    service_subtype = EXCLUDED.service_subtype,\n    service_details = EXCLUDED.service_details,\n    address = EXCLUDED.address,\n    street = EXCLUDED.street,\n    supervisor_district = EXCLUDED.supervisor_district,\n    neighborhoods_sffind_boundaries = EXCLUDED.neighborhoods_sffind_boundaries,\n    analysis_neighborhood = EXCLUDED.analysis_neighborhood,\n    police_district = EXCLUDED.police_district,\n    source = EXCLUDED.source,\n    data_as_of = EXCLUDED.data_as_of,\n    data_loaded_at = EXCLUDED.data_loaded_at,\n    lat = EXCLUDED.lat,\n    long = EXCLUDED.long,\n    media_url = EXCLUDED.media_url,\n    h3_r7 = EXCLUDED.h3_r7,\n    h3_r8 = EXCLUDED.h3_r8,\n    h3_r9 = EXCLUDED.h3_r9,\n    h3_r10 = EXCLUDED.h3_r10,\n    h3_r11 = EXCLUDED.h3_r11",
 };
 
 /**
@@ -360,7 +652,12 @@ const createServiceRequestsIR: any = {
  *     data_loaded_at,
  *     lat,
  *     long,
- *     media_url
+ *     media_url,
+ *     h3_r7,
+ *     h3_r8,
+ *     h3_r9,
+ *     h3_r10,
+ *     h3_r11
  * ) VALUES :requests
  * ON CONFLICT (service_request_id) DO UPDATE SET
  *     requested_datetime = EXCLUDED.requested_datetime,
@@ -383,62 +680,15 @@ const createServiceRequestsIR: any = {
  *     data_loaded_at = EXCLUDED.data_loaded_at,
  *     lat = EXCLUDED.lat,
  *     long = EXCLUDED.long,
- *     media_url = EXCLUDED.media_url
+ *     media_url = EXCLUDED.media_url,
+ *     h3_r7 = EXCLUDED.h3_r7,
+ *     h3_r8 = EXCLUDED.h3_r8,
+ *     h3_r9 = EXCLUDED.h3_r9,
+ *     h3_r10 = EXCLUDED.h3_r10,
+ *     h3_r11 = EXCLUDED.h3_r11
  * ```
  */
 export const createServiceRequests = new PreparedQuery<
   ICreateServiceRequestsParams,
   ICreateServiceRequestsResult
 >(createServiceRequestsIR);
-
-/** 'CreateServiceRequestQueryTagsForMany' parameters type */
-export interface ICreateServiceRequestQueryTagsForManyParams {
-  service_requests: readonly {
-    service_request_id: string | null | void;
-    query_id: string | null | void;
-  }[];
-}
-
-/** 'CreateServiceRequestQueryTagsForMany' return type */
-export type ICreateServiceRequestQueryTagsForManyResult = void;
-
-/** 'CreateServiceRequestQueryTagsForMany' query type */
-export interface ICreateServiceRequestQueryTagsForManyQuery {
-  params: ICreateServiceRequestQueryTagsForManyParams;
-  result: ICreateServiceRequestQueryTagsForManyResult;
-}
-
-const createServiceRequestQueryTagsForManyIR: any = {
-  usedParamSet: { service_requests: true },
-  params: [
-    {
-      name: "service_requests",
-      required: false,
-      transform: {
-        type: "pick_array_spread",
-        keys: [
-          { name: "service_request_id", required: false },
-          { name: "query_id", required: false },
-        ],
-      },
-      locs: [{ a: 87, b: 103 }],
-    },
-  ],
-  statement:
-    "INSERT INTO service_request_query_tags (\n    service_request_id,\n    query_id\n) VALUES :service_requests\nON CONFLICT (service_request_id, query_id) DO NOTHING",
-};
-
-/**
- * Query generated from SQL:
- * ```
- * INSERT INTO service_request_query_tags (
- *     service_request_id,
- *     query_id
- * ) VALUES :service_requests
- * ON CONFLICT (service_request_id, query_id) DO NOTHING
- * ```
- */
-export const createServiceRequestQueryTagsForMany = new PreparedQuery<
-  ICreateServiceRequestQueryTagsForManyParams,
-  ICreateServiceRequestQueryTagsForManyResult
->(createServiceRequestQueryTagsForManyIR);

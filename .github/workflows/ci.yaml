@@ -20,3 +20,62 @@ jobs:
         run: npm run lint:ts
       - name: Unit tests
         run: npm test
+      - name: Build
+        # No database or Redis is reachable here; connections are opened lazily
+        # so the build only needs the env vars that are read at import time.
+        run: npm run build
+        env:
+          MAPBOX_ACCESS_TOKEN: ci-placeholder
+          DATABASE_URL: postgres://ci@localhost:5432/ci
+          REDIS_URL: redis://localhost:6379
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: three_eleven
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/three_eleven?sslmode=disable
+      REDIS_URL: redis://localhost:6379
+      MAPBOX_ACCESS_TOKEN: ci-placeholder
+      ENV: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+      - name: Migrate and seed
+        run: |
+          npx dbmate --no-dump-schema -e DATABASE_URL up
+          npm run seed-db
+      - name: Build
+        run: npm run build
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

@@ -16,6 +16,7 @@ export default defineConfig({
     include: [
       "src/entities/**/*.test.ts",
       "src/lib/**/*.test.ts",
+      "src/app/**/*.test.ts",
       "src/store/**/*.test.ts",
       "src/inngest/**/*.test.ts",
       "src/components/**/*.test.tsx",

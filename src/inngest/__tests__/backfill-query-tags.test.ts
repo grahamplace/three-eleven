@@ -1,242 +1,153 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { db } from "@/lib/db";
+import { replaceQueryTagsForMany } from "@/store/service-request-query-tags";
+import {
+  BATCH_SIZE,
+  EVENTS,
+  monthlyBackfillScheduler,
+  processBatchFunction,
+} from "@/inngest/functions/backfill-query-tags";
 
-// Mock the database connection to prevent process.exit
 vi.mock("@/lib/db", () => ({
-  db: {
-    query: vi.fn(),
-  },
+  db: { query: vi.fn() },
 }));
 
-// Mock the store functions
 vi.mock("@/store/service-request-query-tags", () => ({
-  createQueryTagsForMany: vi.fn(),
+  replaceQueryTagsForMany: vi.fn(),
 }));
 
-describe("Inngest backfill functions", () => {
-  let weeklyBackfillScheduler: any;
-  let processBatchFunction: any;
-  let mockStep: any;
+// A step runner that executes each step inline and records events.
+const makeStep = () => ({
+  run: vi.fn((_name: string, fn: () => Promise<unknown>) => fn()),
+  sendEvent: vi.fn(),
+});
+const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
-  beforeEach(async () => {
-    // Import the functions after mocking
-    const mod = await import("@/inngest/functions/backfill-query-tags");
-    weeklyBackfillScheduler = mod.weeklyBackfillScheduler;
-    processBatchFunction = mod.processBatchFunction;
+const rows = (ids: string[]) => ids.map((id) => ({ service_request_id: id }));
 
-    // Set up mock step
-    mockStep = {
-      run: vi.fn((name) => {
-        if (name === "count-service-requests") {
-          return Promise.resolve(5000);
-        }
-        if (name === "fetch-batch") {
-          return Promise.resolve([{ service_request_id: "test-1" }]);
-        }
-        if (name === "process-batch") {
-          return Promise.resolve(1);
-        }
-        return Promise.resolve();
+describe("monthlyBackfillScheduler", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("kicks off the first batch from the beginning of the key space", async () => {
+    vi.mocked(db.query).mockResolvedValueOnce({
+      rows: [{ count: "5000" }],
+      rowCount: 1,
+    });
+    const step = makeStep();
+
+    const result = await (monthlyBackfillScheduler as any).fn({
+      step,
+      event: { name: "cron" },
+      logger,
+    });
+
+    expect(step.sendEvent).toHaveBeenCalledWith("trigger-first-batch", {
+      name: EVENTS.PROCESS_BATCH,
+      data: { afterId: "", batchSize: BATCH_SIZE },
+    });
+    expect(result).toEqual({
+      totalRequests: 5000,
+      message: "Backfill process initiated",
+    });
+  });
+
+  it("does nothing on an empty table", async () => {
+    vi.mocked(db.query).mockResolvedValueOnce({
+      rows: [{ count: "0" }],
+      rowCount: 1,
+    });
+    const step = makeStep();
+
+    const result = await (monthlyBackfillScheduler as any).fn({
+      step,
+      event: { name: "cron" },
+      logger,
+    });
+
+    expect(step.sendEvent).not.toHaveBeenCalled();
+    expect(result.totalRequests).toBe(0);
+  });
+});
+
+describe("processBatchFunction", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const runBatch = (afterId: string, batchSize: number) => {
+    const step = makeStep();
+    return {
+      step,
+      result: (processBatchFunction as any).fn({
+        step,
+        event: { name: EVENTS.PROCESS_BATCH, data: { afterId, batchSize } },
+        logger,
       }),
-      sendEvent: vi.fn(),
-      logger: {
-        info: vi.fn(),
-      },
     };
-  });
+  };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe("weeklyBackfillScheduler", () => {
-    it("should count service requests and trigger first batch", async () => {
-      // Mock the count query
-      const { db } = await import("@/lib/db");
-      vi.mocked(db.query).mockResolvedValueOnce({
-        rows: [{ count: "5000" }],
-        rowCount: 0,
-      });
-
-      const result = await weeklyBackfillScheduler.fn({
-        step: mockStep,
-        event: { name: "test" },
-        logger: mockStep.logger,
-      } as any);
-
-      expect(mockStep.run).toHaveBeenCalledWith(
-        "count-service-requests",
-        expect.any(Function)
-      );
-      expect(mockStep.sendEvent).toHaveBeenCalledWith("trigger-first-batch", {
-        name: "query-tags.process-batch",
-        data: {
-          batchNumber: 1,
-          totalBatches: 2,
-          batchSize: 2500,
-        },
-      });
-      expect(result).toEqual({
-        totalRequests: 5000,
-        totalBatches: 2,
-        message: "Backfill process initiated",
-      });
+  it("pages by primary key, not offset", async () => {
+    vi.mocked(db.query).mockResolvedValueOnce({
+      rows: rows(["a", "b"]),
+      rowCount: 2,
     });
+    vi.mocked(replaceQueryTagsForMany).mockResolvedValueOnce([]);
 
-    it("should handle empty database", async () => {
-      // Override the mock for this test to return 0
-      mockStep.run = vi.fn((name) => {
-        if (name === "count-service-requests") {
-          return Promise.resolve(0);
-        }
-        return Promise.resolve();
-      });
+    await runBatch("x", 2).result;
 
-      const result = await weeklyBackfillScheduler.fn({
-        step: mockStep,
-        event: { name: "test" },
-        logger: mockStep.logger,
-      } as any);
+    const [sql, params] = vi.mocked(db.query).mock.calls[0];
+    expect(sql).toMatch(/service_request_id > \$1/);
+    expect(sql).toMatch(/ORDER BY service_request_id/);
+    expect(sql).not.toMatch(/OFFSET/i);
+    expect(params).toEqual(["x", 2]);
+  });
 
-      expect(mockStep.sendEvent).not.toHaveBeenCalled();
-      expect(result).toEqual({
-        totalRequests: 0,
-        totalBatches: 0,
-        message: "No service requests to process",
-      });
+  it("chains the next batch from the last id when a page is full", async () => {
+    vi.mocked(db.query).mockResolvedValueOnce({
+      rows: rows(["a", "b"]),
+      rowCount: 2,
+    });
+    vi.mocked(replaceQueryTagsForMany).mockResolvedValueOnce([
+      { service_request_id: "a", query_id: "poop" },
+    ]);
+
+    const { step, result } = runBatch("", 2);
+
+    expect(await result).toEqual({
+      processedRequests: 2,
+      processedTags: 1,
+      lastId: "b",
+      done: false,
+    });
+    expect(step.sendEvent).toHaveBeenCalledWith("trigger-next-batch", {
+      name: EVENTS.PROCESS_BATCH,
+      data: { afterId: "b", batchSize: 2 },
     });
   });
 
-  describe("processBatchFunction", () => {
-    it("should process a batch and trigger next batch", async () => {
-      const mockServiceRequests = [
-        { service_request_id: "test-1" },
-        { service_request_id: "test-2" },
-      ];
-
-      // Mock the fetch batch query
-      const { db } = await import("@/lib/db");
-      vi.mocked(db.query).mockResolvedValueOnce({
-        rows: mockServiceRequests,
-        rowCount: 0,
-      });
-
-      // Mock the createQueryTagsForMany function
-      const { createQueryTagsForMany } = await import(
-        "@/store/service-request-query-tags"
-      );
-      vi.mocked(createQueryTagsForMany).mockResolvedValueOnce([
-        { service_request_id: "test-1", query_id: "poop" },
-        { service_request_id: "test-2", query_id: "graffiti" },
-      ]);
-
-      const result = await processBatchFunction.fn({
-        step: mockStep,
-        event: {
-          name: "query-tags.process-batch",
-          data: {
-            batchNumber: 1,
-            totalBatches: 3,
-            batchSize: 2500,
-          },
-        },
-        logger: mockStep.logger,
-      } as any);
-
-      expect(mockStep.run).toHaveBeenCalledWith(
-        "fetch-batch",
-        expect.any(Function)
-      );
-      expect(mockStep.run).toHaveBeenCalledWith(
-        "process-batch",
-        expect.any(Function)
-      );
-      expect(mockStep.sendEvent).toHaveBeenCalledWith("trigger-next-batch", {
-        name: "query-tags.process-batch",
-        data: {
-          batchNumber: 2,
-          totalBatches: 3,
-          batchSize: 2500,
-        },
-      });
-      expect(result).toEqual({
-        batchNumber: 1,
-        processedRequests: 1,
-        processedTags: 1,
-        status: "completed",
-        nextBatch: 2,
-      });
+  it("stops when a page comes back short", async () => {
+    vi.mocked(db.query).mockResolvedValueOnce({
+      rows: rows(["z"]),
+      rowCount: 1,
     });
+    vi.mocked(replaceQueryTagsForMany).mockResolvedValueOnce([]);
 
-    it("should complete when processing last batch", async () => {
-      const mockServiceRequests = [{ service_request_id: "test-1" }];
+    const { step, result } = runBatch("y", 2);
 
-      // Mock the fetch batch query
-      const { db } = await import("@/lib/db");
-      vi.mocked(db.query).mockResolvedValueOnce({
-        rows: mockServiceRequests,
-        rowCount: 0,
-      });
+    expect(await result).toMatchObject({ lastId: "z", done: true });
+    expect(step.sendEvent).not.toHaveBeenCalled();
+  });
 
-      // Mock the createQueryTagsForMany function
-      const { createQueryTagsForMany } = await import(
-        "@/store/service-request-query-tags"
-      );
-      vi.mocked(createQueryTagsForMany).mockResolvedValueOnce([
-        { service_request_id: "test-1", query_id: "poop" },
-      ]);
+  it("stops on an empty page without touching the store", async () => {
+    vi.mocked(db.query).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
-      const result = await processBatchFunction.fn({
-        step: mockStep,
-        event: {
-          name: "query-tags.process-batch",
-          data: {
-            batchNumber: 2,
-            totalBatches: 2,
-            batchSize: 2500,
-          },
-        },
-        logger: mockStep.logger,
-      } as any);
+    const { step, result } = runBatch("zz", 2);
 
-      expect(mockStep.sendEvent).not.toHaveBeenCalled();
-      expect(result).toEqual({
-        batchNumber: 2,
-        processedRequests: 1,
-        processedTags: 1,
-        status: "completed",
-        nextBatch: null,
-        message: "Backfill process completed",
-      });
+    expect(await result).toEqual({
+      processedRequests: 0,
+      processedTags: 0,
+      lastId: null,
+      done: true,
     });
-
-    it("should handle empty batch", async () => {
-      // Mock empty batch
-      const { db } = await import("@/lib/db");
-      vi.mocked(db.query).mockResolvedValueOnce({
-        rows: [],
-        rowCount: 0,
-      });
-
-      const result = await processBatchFunction.fn({
-        step: mockStep,
-        event: {
-          name: "query-tags.process-batch",
-          data: {
-            batchNumber: 1,
-            totalBatches: 2,
-            batchSize: 2500,
-          },
-        },
-        logger: mockStep.logger,
-      } as any);
-
-      expect(result).toEqual({
-        batchNumber: 1,
-        processedRequests: 1,
-        processedTags: 1,
-        status: "completed",
-        nextBatch: 2,
-      });
-    });
+    expect(replaceQueryTagsForMany).not.toHaveBeenCalled();
+    expect(step.sendEvent).not.toHaveBeenCalled();
   });
 });
