@@ -68,7 +68,7 @@ describe("LocationButton", () => {
     // Use vi.mocked to access the mocked toast
     const mockedToast = vi.mocked(toast);
     expect(mockedToast.error).toHaveBeenCalledWith(
-      "Geolocation is not supported by your browser"
+      "Geolocation is not supported by your browser",
     );
   });
 

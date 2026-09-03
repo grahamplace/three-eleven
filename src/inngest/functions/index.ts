@@ -1,11 +1,11 @@
 import { updateServiceRequests } from "./update-service-requests";
 import {
   processBatchFunction,
-  weeklyBackfillScheduler,
+  monthlyBackfillScheduler,
 } from "./backfill-query-tags";
 
 export const functions = [
   updateServiceRequests,
   processBatchFunction,
-  weeklyBackfillScheduler,
+  monthlyBackfillScheduler,
 ];

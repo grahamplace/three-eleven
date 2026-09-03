@@ -6,6 +6,7 @@ import { supportedMediaDomains } from "@/lib/config";
 import { firstEntity } from "./utils";
 import { replaceQueryTagsForMany } from "./service-request-query-tags";
 import { h3CellsForPoint, type H3Resolution, type HexCount } from "@/lib/h3";
+import { toSfWallClock, toSfWallClockOrNull } from "@/lib/time";
 
 export async function getLatestUpdatedDatetimeFromPg() {
   const pgLatestUpdatedDatetime = await queries.getLatestUpdatedDatetime.run(
@@ -131,11 +132,13 @@ export const createMany = async (serviceRequests: ServiceRequestInput[]) => {
     return [];
   }
 
+  // Dates are instants in JS; Postgres stores SF wall-clock. Convert here so
+  // the result does not depend on the server's TZ (see src/lib/time.ts).
   const mappedRequests = serviceRequests.map((req) => ({
     service_request_id: req.service_request_id,
-    requested_datetime: req.requested_datetime,
-    closed_date: req.closed_date,
-    updated_datetime: req.updated_datetime,
+    requested_datetime: toSfWallClock(req.requested_datetime),
+    closed_date: toSfWallClockOrNull(req.closed_date),
+    updated_datetime: toSfWallClockOrNull(req.updated_datetime),
     status_description: req.status_description,
     status_notes: req.status_notes,
     agency_responsible: req.agency_responsible,
@@ -149,8 +152,8 @@ export const createMany = async (serviceRequests: ServiceRequestInput[]) => {
     analysis_neighborhood: req.analysis_neighborhood,
     police_district: req.police_district,
     source: req.source,
-    data_as_of: req.data_as_of,
-    data_loaded_at: req.data_loaded_at,
+    data_as_of: toSfWallClockOrNull(req.data_as_of),
+    data_loaded_at: toSfWallClockOrNull(req.data_loaded_at),
     lat: req.lat ?? null,
     long: req.long ?? null,
     media_url: req.media_url,
