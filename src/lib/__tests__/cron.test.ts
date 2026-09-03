@@ -1,6 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fromSfWallClock } from "@/lib/time";
 
+const { sodaExecute, sodaOffset } = vi.hoisted(() => ({
+  sodaExecute: vi.fn(),
+  sodaOffset: vi.fn(),
+}));
+
+// Chainable stand-in for the SODA client; only execute() and offset() matter.
+vi.mock("@/lib/sfdata", () => {
+  const chain: Record<string, unknown> = {};
+  for (const m of ["query", "where", "orderBy", "limit"]) {
+    chain[m] = vi.fn(() => chain);
+  }
+  chain.offset = vi.fn((n: number) => {
+    sodaOffset(n);
+    return chain;
+  });
+  chain.execute = () => sodaExecute();
+  return { default: chain, ResourceId: { SERVICE_REQUESTS: "test" } };
+});
+
+vi.mock("@/store/service-request", () => ({
+  createMany: vi.fn(async () => []),
+}));
+
+vi.mock("@/store/metadata", () => ({
+  getLatestUpdatedDatetime: vi.fn(async () => new Date("2024-01-01T08:00:00Z")),
+  setLatestUpdatedDatetime: vi.fn(async () => {}),
+}));
+
 // Mock the database connection to prevent process.exit
 vi.mock("@/lib/db", () => ({
   db: {
@@ -24,11 +52,14 @@ vi.mock("@/lib/actions/service-requests", () => ({
 
 describe("cron", () => {
   let transformData: any;
+  let ingestServiceRequests: any;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     // Import the function after mocking
     const mod = await import("@/lib/cron/service-request");
     transformData = mod.transformData;
+    ingestServiceRequests = mod.ingestServiceRequests;
   });
   const mockRawData = [
     {
@@ -187,6 +218,74 @@ describe("cron", () => {
       const result = transformData(rawDataWithMediaUrl);
 
       expect(result[0].media_url).toBe("https://example.com/image.jpg");
+    });
+  });
+
+  describe("ingestServiceRequests", () => {
+    const page = (n: number, prefix: string) =>
+      Array.from({ length: n }, (_, i) => ({
+        ...mockRawData[0],
+        service_request_id: `${prefix}-${i}`,
+      }));
+
+    it("pages by offset until a short page, then advances the watermark", async () => {
+      const { createMany } = await import("@/store/service-request");
+      const { setLatestUpdatedDatetime } = await import("@/store/metadata");
+      sodaExecute
+        .mockResolvedValueOnce({ data: page(1000, "a") })
+        .mockResolvedValueOnce({ data: page(300, "b") });
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      vi.spyOn(console, "info").mockImplementation(() => {});
+
+      const summary = await ingestServiceRequests({ delayMs: 0 });
+
+      expect(sodaOffset.mock.calls.map((c) => c[0])).toEqual([0, 1000]);
+      expect(createMany).toHaveBeenCalledTimes(2);
+      expect(setLatestUpdatedDatetime).toHaveBeenCalledTimes(1);
+      expect(summary).toEqual({
+        totalProcessed: 1300,
+        batches: 2,
+        hitBatchCap: false,
+      });
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it("stops at the batch cap and warns that rows remain upstream", async () => {
+      const { createMany } = await import("@/store/service-request");
+      const { setLatestUpdatedDatetime } = await import("@/store/metadata");
+      sodaExecute.mockResolvedValue({ data: page(1000, "x") });
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      vi.spyOn(console, "info").mockImplementation(() => {});
+
+      const summary = await ingestServiceRequests({
+        maxBatches: 2,
+        delayMs: 0,
+      });
+
+      expect(createMany).toHaveBeenCalledTimes(2);
+      expect(summary).toEqual({
+        totalProcessed: 2000,
+        batches: 2,
+        hitBatchCap: true,
+      });
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/batch cap/));
+      // The watermark still advances so the next run resumes, not repeats.
+      expect(setLatestUpdatedDatetime).toHaveBeenCalledTimes(1);
+    });
+
+    it("handles no new rows without writing", async () => {
+      const { createMany } = await import("@/store/service-request");
+      sodaExecute.mockResolvedValueOnce({ data: [] });
+      vi.spyOn(console, "info").mockImplementation(() => {});
+
+      const summary = await ingestServiceRequests({ delayMs: 0 });
+
+      expect(createMany).not.toHaveBeenCalled();
+      expect(summary).toEqual({
+        totalProcessed: 0,
+        batches: 0,
+        hitBatchCap: false,
+      });
     });
   });
 });

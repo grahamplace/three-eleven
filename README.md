@@ -52,6 +52,16 @@ We use [pgtyped](https://github.com/adelsz/pgtyped) to generate TypeScript types
 - Add a new query to `db/queries/{name}.sql`
 - Run `npm run queries` to generate the types in `src/store/queries/`
 
+## Deployment
+
+Vercel builds run `scripts/vercel-build.mjs` (the `vercel-build` script). On production
+builds it applies pending migrations with dbmate *before* `next build`, so new code never
+deploys ahead of the schema it needs, and a failed migration fails the deploy. Preview
+builds skip migrations. This replaces the old GitHub Action, which raced the Vercel deploy.
+
+Requires `DATABASE_URL` in the Vercel production environment (already needed at runtime) and
+the project's Build Command left at its default so the `vercel-build` script is picked up.
+
 ## API
 
 Map payloads are served by cacheable `GET` routes (CDN `s-maxage=3600`, busted after each
