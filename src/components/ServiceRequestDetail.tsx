@@ -12,7 +12,7 @@ import DateRangePickerWithRange from "@/components/DatePickerWithRange";
 import { RecenterButton } from "@/components/RecenterButton";
 import { LocationButton } from "./LocationButton";
 import { QueryFilterSelector } from "./QueryFilterSelector";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 interface ServiceRequestDrawerProps {
   selectedRequest: PointTuple | null;
@@ -24,15 +24,14 @@ export default function ServiceRequestDetail({
   selectedRequestData,
 }: ServiceRequestDrawerProps) {
   const { setSelectedRequestId } = useMapContext();
-
-  const handleUnsetSelectedRequest = () => {
-    setSelectedRequestId(null);
-    setIsImageOverlayOpen(false);
-  };
-
   const isOpen = Boolean(selectedRequest);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [isImageOverlayOpen, setIsImageOverlayOpen] = useState(false);
+
+  const handleUnsetSelectedRequest = useCallback(() => {
+    setSelectedRequestId(null);
+    setIsImageOverlayOpen(false);
+  }, [setSelectedRequestId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -47,7 +46,7 @@ export default function ServiceRequestDetail({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isImageOverlayOpen, isOpen]);
+  }, [isImageOverlayOpen, isOpen, handleUnsetSelectedRequest]);
 
   const content = (
     <>

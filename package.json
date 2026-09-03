@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "lint:ts": "tsc --noEmit",
     "migrate": "dbmate -e DATABASE_URL -s ./db/schema.sql",
     "queries": "pgtyped --config pgtyped.json --uri $DATABASE_URL && prettier --write './src/store/**/*.ts'",
