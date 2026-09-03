@@ -2,7 +2,7 @@ import React from "react";
 import Image from "next/image";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "./ui/drawer";
 import { ServiceRequest } from "@/entities";
-import { ServiceRequestDTOThin } from "@/entities/data-transfer";
+import type { PointTuple } from "@/lib/api/types";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ModeToggle } from "@/components/ModeToggle";
@@ -14,7 +14,7 @@ import { QueryFilterSelector } from "./QueryFilterSelector";
 import { useState, useEffect } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 interface ServiceRequestDrawerProps {
-  selectedRequest: ServiceRequestDTOThin | null;
+  selectedRequest: PointTuple | null;
   selectedRequestData: ServiceRequest | null;
 }
 

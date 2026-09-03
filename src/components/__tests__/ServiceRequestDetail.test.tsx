@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import ServiceRequestDetail from "@/components/ServiceRequestDetail";
 import { MapProvider } from "@/contexts/MapContext";
+import type { PointTuple } from "@/lib/api/types";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
@@ -81,12 +82,7 @@ vi.mock("@radix-ui/react-visually-hidden", () => ({
 }));
 
 describe("ServiceRequestDetail", () => {
-  const mockSelectedRequest = {
-    serviceRequestId: "12345",
-    latitude: 37.7749,
-    longitude: -122.4194,
-    weight: 1,
-  };
+  const mockSelectedRequest: PointTuple = ["12345", -122.4194, 37.7749];
 
   const mockSelectedRequestData = {
     service_request_id: "12345",

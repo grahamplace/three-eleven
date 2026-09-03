@@ -73,6 +73,11 @@ export interface IFindServiceRequestsByQueryIdResult {
   created_at: Date | null;
   data_as_of: Date | null;
   data_loaded_at: Date | null;
+  h3_r10: string | null;
+  h3_r11: string | null;
+  h3_r7: string | null;
+  h3_r8: string | null;
+  h3_r9: string | null;
   lat: number | null;
   latlon: string | null;
   long: number | null;

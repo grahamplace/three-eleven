@@ -56,6 +56,11 @@ const row = {
   created_at: null,
   updated_at: null,
   latlon: null,
+  h3_r7: null,
+  h3_r8: null,
+  h3_r9: null,
+  h3_r10: null,
+  h3_r11: null,
 };
 
 describe("store/service-request", () => {

@@ -3,11 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import MapComponent from "@/components/Map";
 import { MapProvider } from "@/contexts/MapContext";
-import {
-  getServiceRequests,
-  getServiceRequestById,
-  getServiceRequestsByPredefinedQuery,
-} from "@/lib/actions/service-requests";
+import { getServiceRequestById } from "@/lib/actions/service-requests";
 import { toast } from "sonner";
 
 // Mutable search params so individual tests can seed URL state
@@ -75,9 +71,7 @@ vi.mock("react-map-gl", async () => {
 });
 
 vi.mock("@/lib/actions/service-requests", () => ({
-  getServiceRequests: vi.fn(),
   getServiceRequestById: vi.fn(),
-  getServiceRequestsByPredefinedQuery: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-media-query", () => ({
@@ -88,8 +82,10 @@ vi.mock("next-themes", () => ({
   useTheme: vi.fn(() => ({ theme: "light" })),
 }));
 
-vi.mock("@/lib/h3", () => ({
-  binPointsToHexagons: vi.fn(() => ({
+// Keep the real zoom→resolution mapping; stub the grid geometry, which is slow.
+vi.mock("@/lib/h3", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/h3")>()),
+  hexCountsToFeatures: vi.fn(() => ({
     type: "FeatureCollection",
     features: [],
   })),
@@ -105,9 +101,7 @@ vi.mock("@/components/ServiceRequestDetail", () => ({
   default: vi.fn(({ selectedRequest, selectedRequestData }) => (
     <div data-testid="service-request-detail">
       {selectedRequest && (
-        <div data-testid="selected-request">
-          {selectedRequest.serviceRequestId}
-        </div>
+        <div data-testid="selected-request">{selectedRequest[0]}</div>
       )}
       {selectedRequestData && (
         <div data-testid="request-data">
@@ -118,11 +112,25 @@ vi.mock("@/components/ServiceRequestDetail", () => ({
   )),
 }));
 
-const mockedGetServiceRequests = vi.mocked(getServiceRequests);
 const mockedGetServiceRequestById = vi.mocked(getServiceRequestById);
-const mockedGetByPredefinedQuery = vi.mocked(
-  getServiceRequestsByPredefinedQuery,
-);
+
+// Map data comes from the /api/points and /api/hexbins routes.
+const fetchMock = vi.fn();
+vi.stubGlobal("fetch", fetchMock);
+
+const jsonResponse = (body: unknown) =>
+  Promise.resolve(
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+
+const fetchedPaths = () =>
+  fetchMock.mock.calls.map((c) => {
+    const url = new URL(String(c[0]), "http://localhost");
+    return { path: url.pathname, params: url.searchParams };
+  });
 
 const clickFeature = (el: HTMLElement, serviceRequestId: string) => {
   const event = new MouseEvent("click", { bubbles: true });
@@ -151,14 +159,18 @@ describe("MapComponent", () => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
 
-    mockedGetServiceRequests.mockResolvedValue([
-      {
-        serviceRequestId: "1",
-        latitude: 37.7749,
-        longitude: -122.4194,
-        weight: 1,
-      },
-    ]);
+    // Answer each route with its own payload shape. The first render fetches
+    // points before URL state hydrates, so a hexabin test still sees a points
+    // request in flight.
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = new URL(String(input), "http://localhost");
+      return url.pathname === "/api/hexbins"
+        ? jsonResponse({
+            resolution: Number(url.searchParams.get("res")),
+            cells: [],
+          })
+        : jsonResponse({ points: [["1", -122.4194, 37.7749]] });
+    });
 
     mockedGetServiceRequestById.mockResolvedValue({
       service_request_id: "1",
@@ -202,42 +214,60 @@ describe("MapComponent", () => {
     expect(screen.getByText("Loading data...")).toBeInTheDocument();
   });
 
-  it("fetches all service requests when no query is selected", async () => {
+  it("fetches points for the date range when no query is selected", async () => {
     renderMap();
 
     await waitFor(() => {
-      expect(mockedGetServiceRequests).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        [],
-      );
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
+    const [{ path, params }] = fetchedPaths();
+    expect(path).toBe("/api/points");
+    expect(params.get("start")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(params.get("end")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(params.has("query")).toBe(false);
 
     await waitFor(() => {
       expect(screen.queryByText("Loading data...")).not.toBeInTheDocument();
     });
-    expect(mockedGetByPredefinedQuery).not.toHaveBeenCalled();
   });
 
-  it("fetches data using predefined query when selected via URL", async () => {
+  it("passes the predefined query and dates from the URL through to the API", async () => {
     searchParams = new URLSearchParams(
       "query=graffiti&start=2024-01-01&end=2024-01-31",
     );
-    mockedGetByPredefinedQuery.mockResolvedValue([]);
 
     renderMap();
 
     await waitFor(() => {
-      expect(mockedGetByPredefinedQuery).toHaveBeenCalledWith(
-        "graffiti",
-        "2024-01-01",
-        "2024-01-31",
-      );
+      expect(fetchMock).toHaveBeenCalled();
     });
+    const { path, params } = fetchedPaths().at(-1)!;
+    expect(path).toBe("/api/points");
+    expect(params.get("query")).toBe("graffiti");
+    expect(params.get("start")).toBe("2024-01-01");
+    expect(params.get("end")).toBe("2024-01-31");
   });
 
-  it("surfaces a toast when data fetching fails", async () => {
-    mockedGetServiceRequests.mockRejectedValue(new Error("Failed to fetch"));
+  it("requests server-side hexbin counts at the zoom's resolution in hexabin mode", async () => {
+    searchParams = new URLSearchParams("mode=hexabin");
+
+    renderMap();
+
+    await waitFor(() => {
+      expect(fetchedPaths().some((f) => f.path === "/api/hexbins")).toBe(true);
+    });
+    // Mode is hydrated from the URL after first render, so the most recent
+    // request is the one that reflects hexabin mode.
+    const last = fetchedPaths().at(-1)!;
+    expect(last.path).toBe("/api/hexbins");
+    // Initial zoom is 11.5, which maps to resolution 9.
+    expect(last.params.get("res")).toBe("9");
+  });
+
+  it("surfaces a toast when the API responds with an error", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(new Response("nope", { status: 500 })),
+    );
 
     renderMap();
 

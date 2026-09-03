@@ -9,20 +9,25 @@ import Map, {
   MapMouseEvent,
   MapTouchEvent,
 } from "react-map-gl";
-import {
-  getServiceRequests,
-  getServiceRequestById,
-  getServiceRequestsByPredefinedQuery,
-} from "@/lib/actions/service-requests";
+import { getServiceRequestById } from "@/lib/actions/service-requests";
 import { ServiceRequest } from "@/entities";
 import ServiceRequestDetail from "./ServiceRequestDetail";
-import { ServiceRequestDTOThin } from "@/entities/data-transfer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTheme } from "next-themes";
-import { binPointsToHexagons } from "@/lib/h3";
+import {
+  getResolutionFromZoom,
+  hexCountsToFeatures,
+  type HexCount,
+  type MapBounds,
+} from "@/lib/h3";
 import { useMapContext } from "@/contexts/MapContext";
 import { Badge } from "./ui/badge";
 import { toast } from "sonner";
+import type {
+  HexbinsResponse,
+  PointsResponse,
+  PointTuple,
+} from "@/lib/api/types";
 
 export default function MapComponent({
   token,
@@ -38,6 +43,14 @@ export default function MapComponent({
   );
 }
 
+async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
+  const response = await fetch(url, { signal });
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
 function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const { theme } = useTheme();
@@ -49,17 +62,14 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     selectedQuery,
   } = useMapContext();
   const [isLoading, setIsLoading] = useState(true);
-  const [points, setPoints] = useState<ServiceRequestDTOThin[]>([]);
+  const [points, setPoints] = useState<PointTuple[]>([]);
+  const [hexCounts, setHexCounts] = useState<HexCount[]>([]);
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
-  const [selectedRequest, setSelectedRequest] =
-    useState<ServiceRequestDTOThin | null>(null);
-  const [mapBounds, setMapBounds] = useState<{
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-  }>({
+  const [selectedRequest, setSelectedRequest] = useState<PointTuple | null>(
+    null
+  );
+  const [mapBounds, setMapBounds] = useState<MapBounds>({
     north: 37.811749,
     south: 37.708075,
     east: -122.346582,
@@ -75,48 +85,56 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
   const { map } = useMap();
 
   const [zoom, setZoom] = useState(11.5);
+  const resolution = getResolutionFromZoom(zoom);
+  const isHexabin = mode === "hexabin";
 
+  // Points and heatmap share one payload. Hexbins are aggregated server-side
+  // per resolution, so only a resolution change (not every zoom tick) refetches.
   useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      start: dateRange.start,
+      end: dateRange.end,
+    });
+    if (selectedQuery) params.set("query", selectedQuery);
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        let data: ServiceRequestDTOThin[];
-
-        if (selectedQuery) {
-          // Fetch data using the predefined query
-          data = await getServiceRequestsByPredefinedQuery(
-            selectedQuery,
-            dateRange.start,
-            dateRange.end,
+        if (isHexabin) {
+          params.set("res", String(resolution));
+          const data = await fetchJson<HexbinsResponse>(
+            `/api/hexbins?${params}`,
+            controller.signal
           );
+          setHexCounts(data.cells);
         } else {
-          // Fetch all service requests without filtering by service details
-          data = await getServiceRequests(
-            dateRange.start,
-            dateRange.end,
-            [], // Empty array to fetch all service requests
+          const data = await fetchJson<PointsResponse>(
+            `/api/points?${params}`,
+            controller.signal
           );
+          setPoints(data.points);
         }
-
-        setPoints(data);
+        setIsLoading(false);
       } catch {
+        if (controller.signal.aborted) return;
         toast.error("Failed to load map data. Please try again.");
-      } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [dateRange.start, dateRange.end, selectedQuery]);
+    return () => controller.abort();
+  }, [dateRange.start, dateRange.end, selectedQuery, isHexabin, resolution]);
+
+  const selectedId = selectedRequest?.[0] ?? null;
 
   useEffect(() => {
     const fetchRequestDetails = async () => {
-      if (selectedRequest?.serviceRequestId) {
+      if (selectedId) {
         setSelectedRequestData(null);
         try {
-          const data = await getServiceRequestById(
-            selectedRequest.serviceRequestId,
-          );
+          const data = await getServiceRequestById(selectedId);
           setSelectedRequestData(data);
         } catch {
           toast.error("Failed to load request details. Please try again.");
@@ -127,22 +145,19 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     };
 
     fetchRequestDetails();
-  }, [selectedRequest?.serviceRequestId]);
+  }, [selectedId]);
 
-  const geojson = {
-    type: "FeatureCollection",
-    features: points.map((point) => ({
-      type: "Feature",
-      properties: {
-        weight: point.weight,
-        serviceRequestId: point.serviceRequestId,
-      },
-      geometry: {
-        type: "Point",
-        coordinates: [point.longitude, point.latitude],
-      },
-    })),
-  };
+  const geojson = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: points.map(([id, lng, lat]) => ({
+        type: "Feature",
+        properties: { weight: 1, serviceRequestId: id },
+        geometry: { type: "Point", coordinates: [lng, lat] },
+      })),
+    }),
+    [points]
+  );
 
   const handleMapMove = useCallback(() => {
     if (map) {
@@ -158,11 +173,10 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     }
   }, [map]);
 
-  // Pass zoom to hexagonData calculation
   const hexagonData = useMemo(() => {
-    if (mode !== "hexabin") return null;
-    return binPointsToHexagons(points, mapBounds, zoom);
-  }, [points, mapBounds, zoom, mode]);
+    if (!isHexabin) return null;
+    return hexCountsToFeatures(hexCounts, mapBounds, resolution);
+  }, [hexCounts, mapBounds, resolution, isHexabin]);
 
   const handleMapInteraction = (event: MapMouseEvent | MapTouchEvent) => {
     if (!event.features?.length) {
@@ -176,12 +190,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     const latitude = event.lngLat.lat;
     const requestId = feature.properties?.serviceRequestId || "";
 
-    setSelectedRequest({
-      longitude: longitude,
-      latitude: latitude,
-      serviceRequestId: requestId,
-      weight: 1,
-    });
+    setSelectedRequest([requestId, longitude, latitude]);
     setSelectedRequestId(requestId);
 
     if (map) {
@@ -216,6 +225,8 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     }
   };
 
+  const selectedIdExpr = selectedId || "";
+
   return (
     <div className="relative h-screen w-full" data-testid="map">
       <div className="h-full w-full flex flex-row">
@@ -241,7 +252,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
                 <LoadingOverlay />
               ) : (
                 <>
-                  {mode === "hexabin" ? (
+                  {isHexabin && hexagonData ? (
                     <Source type="geojson" data={hexagonData}>
                       <Layer
                         id="hexagon-layer"
@@ -264,7 +275,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
                             50,
                             "rgb(178,24,43)",
                           ],
-                          "fill-opacity": mode === "hexabin" ? 0.7 : 0.5,
+                          "fill-opacity": 0.7,
                         }}
                       />
                       <Layer
@@ -341,7 +352,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
                               [
                                 "==",
                                 ["get", "serviceRequestId"],
-                                selectedRequest?.serviceRequestId || "",
+                                selectedIdExpr,
                               ],
                               1,
                               0.05,
@@ -352,7 +363,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
                               [
                                 "==",
                                 ["get", "serviceRequestId"],
-                                selectedRequest?.serviceRequestId || "",
+                                selectedIdExpr,
                               ],
                               12,
                               6,
@@ -360,11 +371,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
                           ],
                           "circle-color": [
                             "case",
-                            [
-                              "==",
-                              ["get", "serviceRequestId"],
-                              selectedRequest?.serviceRequestId || "",
-                            ],
+                            ["==", ["get", "serviceRequestId"], selectedIdExpr],
                             "#00ff00",
                             "transparent",
                           ],
