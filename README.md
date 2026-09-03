@@ -52,6 +52,28 @@ We use [pgtyped](https://github.com/adelsz/pgtyped) to generate TypeScript types
 - Add a new query to `db/queries/{name}.sql`
 - Run `npm run queries` to generate the types in `src/store/queries/`
 
+### Testing
+
+```
+npm test            # unit + component tests (vitest)
+npm run test:e2e    # browser flows (Playwright) against a running app + database
+```
+
+The e2e suite mocks the map data routes at the network layer and reads one seeded row
+(`npm run seed-db`) for the detail panel. CI runs it in Chromium against the production
+build with Postgres and Redis service containers. Locally it reuses `npm run dev`, or set
+`PORT` to point at another server.
+
+## Deployment
+
+Vercel builds run `scripts/vercel-build.mjs` (the `vercel-build` script). On production
+builds it applies pending migrations with dbmate *before* `next build`, so new code never
+deploys ahead of the schema it needs, and a failed migration fails the deploy. Preview
+builds skip migrations. This replaces the old GitHub Action, which raced the Vercel deploy.
+
+Requires `DATABASE_URL` in the Vercel production environment (already needed at runtime) and
+the project's Build Command left at its default so the `vercel-build` script is picked up.
+
 ## API
 
 Map payloads are served by cacheable `GET` routes (CDN `s-maxage=3600`, busted after each

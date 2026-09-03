@@ -19,7 +19,8 @@
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "backfill-h3": "npx tsx scripts/backfill-h3.ts"
+    "backfill-h3": "npx tsx scripts/backfill-h3.ts",
+    "vercel-build": "node scripts/vercel-build.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

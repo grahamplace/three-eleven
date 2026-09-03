@@ -72,51 +72,74 @@ async function fetchDataChunk(
   return result.data;
 }
 
-export async function ingestServiceRequests() {
-  let batchesProcessed = 0;
+export type IngestOptions = {
+  /** Upper bound on batches per run; the default fits a serverless timeout. */
+  maxBatches?: number;
+  /** Pause between SODA pages, to stay clear of rate limits. */
+  delayMs?: number;
+};
+
+export type IngestSummary = {
+  totalProcessed: number;
+  batches: number;
+  /** True when the run stopped at maxBatches with more rows still upstream. */
+  hitBatchCap: boolean;
+};
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export async function ingestServiceRequests({
+  maxBatches = MAX_BATCHES_PER_RUN,
+  delayMs = DELAY_MS,
+}: IngestOptions = {}): Promise<IngestSummary> {
+  // Pagination is by offset, so the watermark must stay fixed across pages.
+  const latestUpdatedDatetime = await getLatestUpdatedDatetime();
+  let batches = 0;
   let offset = 0;
   let totalProcessed = 0;
-  // Because we use the offset to paginate the query, we should use a fixed updated_datetime for all batches
-  const latestUpdatedDatetime = await getLatestUpdatedDatetime();
+  let hitBatchCap = false;
 
-  try {
-    while (batchesProcessed < MAX_BATCHES_PER_RUN) {
-      console.info(
-        `Fetching batch ${batchesProcessed + 1} with offset ${offset} and latestUpdatedDatetime ${latestUpdatedDatetime}`,
-      );
-      const rawData = await fetchDataChunk(offset, latestUpdatedDatetime);
-
-      if (rawData.length === 0) {
-        console.info("No more data to fetch");
-        break;
-      }
-
-      const transformedData = transformData(rawData);
-      await createMany(transformedData);
-
-      totalProcessed += rawData.length;
-      console.info(`Processed ${totalProcessed} records so far`);
-
-      if (rawData.length < BATCH_SIZE) {
-        console.info("Reached end of data");
-        break;
-      }
-
-      offset += BATCH_SIZE;
-      batchesProcessed++;
-
-      // Add delay to avoid any rate limiting
-      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+  for (;;) {
+    if (batches >= maxBatches) {
+      hitBatchCap = true;
+      break;
     }
 
-    // After batch completes, set the latest updated datetime
-    await setLatestUpdatedDatetime();
+    console.info(
+      `Fetching batch ${batches + 1} at offset ${offset} (updated after ${toSfWallClock(latestUpdatedDatetime)})`,
+    );
+    const rawData = await fetchDataChunk(offset, latestUpdatedDatetime);
+    if (rawData.length === 0) {
+      break;
+    }
 
-    console.info(`Completed! Total records processed: ${totalProcessed}`);
-  } catch (error) {
-    console.error("Error scraping data:", error);
-    throw error;
+    await createMany(transformData(rawData));
+    totalProcessed += rawData.length;
+    batches++;
+    offset += BATCH_SIZE;
+    console.info(`Processed ${totalProcessed} records so far`);
+
+    if (rawData.length < BATCH_SIZE) {
+      break; // short page: nothing left upstream
+    }
+    if (delayMs > 0) await sleep(delayMs);
   }
+
+  // Advance the watermark to the newest row we now hold. Rows we did not reach
+  // this run have a later updated_datetime and are picked up next run.
+  await setLatestUpdatedDatetime();
+
+  if (hitBatchCap) {
+    console.warn(
+      `Ingest stopped at the ${maxBatches}-batch cap with more rows upstream; ` +
+        `the next run resumes from the new watermark. If this happens every run, ingestion is falling behind.`,
+    );
+  }
+  console.info(
+    `Ingest complete: ${totalProcessed} records in ${batches} batches${hitBatchCap ? " (cap reached)" : ""}`,
+  );
+
+  return { totalProcessed, batches, hitBatchCap };
 }
 
 export function transformData(

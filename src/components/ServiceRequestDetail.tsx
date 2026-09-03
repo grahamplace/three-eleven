@@ -2,7 +2,6 @@ import React from "react";
 import Image from "next/image";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "./ui/drawer";
 import { ServiceRequest } from "@/entities";
-import type { PointTuple } from "@/lib/api/types";
 import { formatSfDateTime } from "@/lib/time";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -15,16 +14,16 @@ import { QueryFilterSelector } from "./QueryFilterSelector";
 import { useState, useEffect, useCallback } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 interface ServiceRequestDrawerProps {
-  selectedRequest: PointTuple | null;
+  selectedRequestId: string | null;
   selectedRequestData: ServiceRequest | null;
 }
 
 export default function ServiceRequestDetail({
-  selectedRequest,
+  selectedRequestId,
   selectedRequestData,
 }: ServiceRequestDrawerProps) {
   const { setSelectedRequestId } = useMapContext();
-  const isOpen = Boolean(selectedRequest);
+  const isOpen = Boolean(selectedRequestId);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [isImageOverlayOpen, setIsImageOverlayOpen] = useState(false);
 
@@ -347,7 +346,7 @@ export default function ServiceRequestDetail({
           {isOpen && (
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
-                {selectedRequest && content}
+                {isOpen && content}
               </div>
             </div>
           )}
@@ -367,7 +366,7 @@ export default function ServiceRequestDetail({
               </DrawerHeader>
             </VisuallyHidden>
             <div className="overflow-y-auto h-full pb-8">
-              {selectedRequest && content}
+              {isOpen && content}
             </div>
           </DrawerContent>
         </Drawer>
