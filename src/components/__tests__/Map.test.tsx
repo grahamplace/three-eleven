@@ -98,10 +98,10 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/components/ServiceRequestDetail", () => ({
-  default: vi.fn(({ selectedRequest, selectedRequestData }) => (
+  default: vi.fn(({ selectedRequestId, selectedRequestData }) => (
     <div data-testid="service-request-detail">
-      {selectedRequest && (
-        <div data-testid="selected-request">{selectedRequest[0]}</div>
+      {selectedRequestId && (
+        <div data-testid="selected-request">{selectedRequestId}</div>
       )}
       {selectedRequestData && (
         <div data-testid="request-data">
