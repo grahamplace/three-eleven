@@ -52,6 +52,18 @@ We use [pgtyped](https://github.com/adelsz/pgtyped) to generate TypeScript types
 - Add a new query to `db/queries/{name}.sql`
 - Run `npm run queries` to generate the types in `src/store/queries/`
 
+### Testing
+
+```
+npm test            # unit + component tests (vitest)
+npm run test:e2e    # browser flows (Playwright) against a running app + database
+```
+
+The e2e suite mocks the map data routes at the network layer and reads one seeded row
+(`npm run seed-db`) for the detail panel. CI runs it in Chromium against the production
+build with Postgres and Redis service containers. Locally it reuses `npm run dev`, or set
+`PORT` to point at another server.
+
 ## Deployment
 
 Vercel builds run `scripts/vercel-build.mjs` (the `vercel-build` script). On production
