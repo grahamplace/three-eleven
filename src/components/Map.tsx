@@ -49,7 +49,6 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     selectedQuery,
   } = useMapContext();
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [points, setPoints] = useState<ServiceRequestDTOThin[]>([]);
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
@@ -80,7 +79,6 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      setError(null);
       try {
         let data: ServiceRequestDTOThin[];
 
@@ -89,24 +87,19 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
           data = await getServiceRequestsByPredefinedQuery(
             selectedQuery,
             dateRange.start,
-            dateRange.end
+            dateRange.end,
           );
         } else {
           // Fetch all service requests without filtering by service details
           data = await getServiceRequests(
             dateRange.start,
             dateRange.end,
-            [] // Empty array to fetch all service requests
+            [], // Empty array to fetch all service requests
           );
         }
 
         setPoints(data);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch service request data";
-        setError(errorMessage);
+      } catch {
         toast.error("Failed to load map data. Please try again.");
       } finally {
         setIsLoading(false);
@@ -122,14 +115,10 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
         setSelectedRequestData(null);
         try {
           const data = await getServiceRequestById(
-            selectedRequest.serviceRequestId
+            selectedRequest.serviceRequestId,
           );
           setSelectedRequestData(data);
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : "Failed to fetch request details";
+        } catch {
           toast.error("Failed to load request details. Please try again.");
         }
       } else {
@@ -199,9 +188,6 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
       if (isDesktop) {
         // For desktop with sidebar, we need to offset the center
         const SIDEBAR_WIDTH = 400; // Width of the sidebar in pixels
-
-        // Get the current viewport dimensions
-        const viewportWidth = map.getContainer().offsetWidth;
 
         // Calculate the pixel offset needed (half the sidebar width)
         const pixelOffsetX = SIDEBAR_WIDTH / 2;

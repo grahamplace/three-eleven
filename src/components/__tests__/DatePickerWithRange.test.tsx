@@ -55,7 +55,7 @@ vi.mock("@/components/ui/button", () => ({
 }));
 
 vi.mock("@/components/ui/calendar", () => ({
-  Calendar: vi.fn(({ onSelect, selected, mode, numberOfMonths }) => (
+  Calendar: vi.fn(({ selected, mode, numberOfMonths }) => (
     <div data-testid="calendar" data-mode={mode} data-months={numberOfMonths}>
       <button>Select Date</button>
       {selected && (
@@ -73,7 +73,7 @@ vi.mock("@/components/ui/calendar", () => ({
 }));
 
 vi.mock("@/components/ui/popover", () => ({
-  Popover: vi.fn(({ children, open, onOpenChange }) => (
+  Popover: vi.fn(({ children, open }) => (
     <div data-testid="popover" data-open={open}>
       {children}
     </div>

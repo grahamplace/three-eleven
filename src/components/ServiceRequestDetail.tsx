@@ -122,7 +122,7 @@ export default function ServiceRequestDetail({
                         <span>
                           {selectedRequestData.service_subtype.replace(
                             /_/g,
-                            " "
+                            " ",
                           )}
                         </span>
                       </div>
@@ -135,7 +135,7 @@ export default function ServiceRequestDetail({
                         <span>
                           {selectedRequestData.service_details.replace(
                             /_/g,
-                            " "
+                            " ",
                           )}
                         </span>
                       </div>
@@ -207,7 +207,7 @@ export default function ServiceRequestDetail({
                       </span>
                       <span>
                         {new Date(
-                          selectedRequestData.requested_datetime
+                          selectedRequestData.requested_datetime,
                         ).toLocaleString()}
                       </span>
                     </div>
@@ -218,7 +218,7 @@ export default function ServiceRequestDetail({
                         </span>
                         <span>
                           {new Date(
-                            selectedRequestData.updated_datetime
+                            selectedRequestData.updated_datetime,
                           ).toLocaleString()}
                         </span>
                       </div>
@@ -230,7 +230,7 @@ export default function ServiceRequestDetail({
                         </span>
                         <span>
                           {new Date(
-                            selectedRequestData.closed_date
+                            selectedRequestData.closed_date,
                           ).toLocaleString()}
                         </span>
                       </div>
@@ -282,9 +282,7 @@ export default function ServiceRequestDetail({
       {isImageOverlayOpen && selectedRequestData?.media_url && (
         <div
           className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4"
-          onClick={(e) => {
-            setIsImageOverlayOpen(false);
-          }}
+          onClick={() => setIsImageOverlayOpen(false)}
         >
           <div className="relative w-full h-full max-w-5xl max-h-[90vh]">
             <Image
@@ -298,9 +296,7 @@ export default function ServiceRequestDetail({
           </div>
           <button
             className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
-            onClick={(e) => {
-              setIsImageOverlayOpen(false);
-            }}
+            onClick={() => setIsImageOverlayOpen(false)}
             aria-label="Close image overlay"
           >
             <svg

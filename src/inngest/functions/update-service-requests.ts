@@ -8,7 +8,7 @@ export const updateServiceRequests = inngest.createFunction(
   },
   // Run once every day at 12:00 AM
   { cron: "TZ=America/Los_Angeles 0 0 * * *" },
-  async ({ step }) => {
+  async () => {
     await ingestServiceRequests();
   }
 );

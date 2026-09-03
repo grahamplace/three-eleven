@@ -1,7 +1,14 @@
-import { beforeAll, afterAll, afterEach, vi } from "vitest";
+import { afterEach, vi } from "vitest";
+import { cleanup } from "@testing-library/react";
 
 // Set up jest-dom matchers
 import "@testing-library/jest-dom/vitest";
+
+// Unmount rendered trees between tests. Vitest does not enable RTL auto-cleanup
+// without `globals: true`, so without this every render leaks into the next test.
+afterEach(() => {
+  cleanup();
+});
 
 // Mock scrollIntoView for Radix UI components in jsdom
 Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {

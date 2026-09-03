@@ -26,8 +26,8 @@ describe("cron", () => {
 
   beforeEach(async () => {
     // Import the function after mocking
-    const module = await import("@/lib/cron/service-request");
-    transformData = module.transformData;
+    const mod = await import("@/lib/cron/service-request");
+    transformData = mod.transformData;
   });
   describe("transformData", () => {
     const mockRawData = [

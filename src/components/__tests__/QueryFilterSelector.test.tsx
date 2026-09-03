@@ -56,7 +56,7 @@ describe("QueryFilterSelector", () => {
     });
   });
 
-  it("shows loading state initially", () => {
+  it("defaults to All once queries load", async () => {
     render(
       <MapProvider>
         <QueryFilterSelector />
@@ -64,7 +64,7 @@ describe("QueryFilterSelector", () => {
     );
 
     // Should show "All" as default when no query is selected
-    expect(screen.getByText("All")).toBeInTheDocument();
+    expect(await screen.findByText("All")).toBeInTheDocument();
   });
 
   it("loads and displays predefined queries", async () => {

@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, afterEach, vi } from "vitest";
+import { beforeAll, afterAll, vi } from "vitest";
 
 // MSW setup will be handled in individual test files as needed
 

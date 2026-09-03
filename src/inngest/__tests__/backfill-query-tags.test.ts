@@ -19,13 +19,13 @@ describe("Inngest backfill functions", () => {
 
   beforeEach(async () => {
     // Import the functions after mocking
-    const module = await import("@/inngest/functions/backfill-query-tags");
-    weeklyBackfillScheduler = module.weeklyBackfillScheduler;
-    processBatchFunction = module.processBatchFunction;
+    const mod = await import("@/inngest/functions/backfill-query-tags");
+    weeklyBackfillScheduler = mod.weeklyBackfillScheduler;
+    processBatchFunction = mod.processBatchFunction;
 
     // Set up mock step
     mockStep = {
-      run: vi.fn((name, fn) => {
+      run: vi.fn((name) => {
         if (name === "count-service-requests") {
           return Promise.resolve(5000);
         }
@@ -54,6 +54,7 @@ describe("Inngest backfill functions", () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query).mockResolvedValueOnce({
         rows: [{ count: "5000" }],
+        rowCount: 0,
       });
 
       const result = await weeklyBackfillScheduler.fn({
@@ -83,7 +84,7 @@ describe("Inngest backfill functions", () => {
 
     it("should handle empty database", async () => {
       // Override the mock for this test to return 0
-      mockStep.run = vi.fn((name, fn) => {
+      mockStep.run = vi.fn((name) => {
         if (name === "count-service-requests") {
           return Promise.resolve(0);
         }
@@ -116,6 +117,7 @@ describe("Inngest backfill functions", () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query).mockResolvedValueOnce({
         rows: mockServiceRequests,
+        rowCount: 0,
       });
 
       // Mock the createQueryTagsForMany function
@@ -172,6 +174,7 @@ describe("Inngest backfill functions", () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query).mockResolvedValueOnce({
         rows: mockServiceRequests,
+        rowCount: 0,
       });
 
       // Mock the createQueryTagsForMany function
@@ -211,6 +214,7 @@ describe("Inngest backfill functions", () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query).mockResolvedValueOnce({
         rows: [],
+        rowCount: 0,
       });
 
       const result = await processBatchFunction.fn({

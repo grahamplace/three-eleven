@@ -27,7 +27,7 @@ vi.mock("next/image", () => ({
 
 // Mock UI components
 vi.mock("@/components/ui/drawer", () => ({
-  Drawer: vi.fn(({ children, open, onOpenChange }) => (
+  Drawer: vi.fn(({ children, open }) => (
     <div data-testid="drawer" data-open={open}>
       {children}
     </div>
@@ -265,7 +265,7 @@ describe("ServiceRequestDetail", () => {
     expect(images[0]).toHaveAttribute("src", "https://example.com/image.jpg");
   });
 
-  it.skip("does not display media when not available", () => {
+  it("does not display media when not available", () => {
     const requestWithoutMedia = {
       ...mockSelectedRequestData,
       media_url: null,
