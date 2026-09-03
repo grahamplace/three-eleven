@@ -1,6 +1,6 @@
 import { inngest } from "@/inngest/client";
 import { db } from "@/lib/db";
-import { createQueryTagsForMany } from "@/store/service-request-query-tags";
+import { replaceQueryTagsForMany } from "@/store/service-request-query-tags";
 
 export const EVENTS = {
   WEEKLY_BACKFILL: "query-tags.weekly-backfill",
@@ -80,7 +80,7 @@ export const processBatchFunction = inngest.createFunction(
         return 0;
       }
 
-      const tags = await createQueryTagsForMany(serviceRequests);
+      const tags = await replaceQueryTagsForMany(serviceRequests);
       return tags.length;
     });
 

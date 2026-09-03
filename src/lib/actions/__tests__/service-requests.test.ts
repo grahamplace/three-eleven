@@ -11,10 +11,7 @@ vi.mock("@/store/service-request", () => ({
   findByDateAndType: vi.fn(),
   findAll: vi.fn(),
   find: vi.fn(),
-}));
-
-vi.mock("@/store/service-request-query-tags", () => ({
-  findServiceRequestsByQueryId: vi.fn(),
+  findByQueryId: vi.fn(),
 }));
 
 vi.mock("@/entities/data-transfer", () => ({
@@ -251,10 +248,8 @@ describe("service-requests actions", () => {
         },
       ];
 
-      const { findServiceRequestsByQueryId } = await import(
-        "@/store/service-request-query-tags"
-      );
-      vi.mocked(findServiceRequestsByQueryId).mockResolvedValue(
+      const { findByQueryId } = await import("@/store/service-request");
+      vi.mocked(findByQueryId).mockResolvedValue(
         mockServiceRequests
       );
 
@@ -264,7 +259,7 @@ describe("service-requests actions", () => {
         "2024-01-31"
       );
 
-      expect(findServiceRequestsByQueryId).toHaveBeenCalledWith(
+      expect(findByQueryId).toHaveBeenCalledWith(
         "poop",
         "2024-01-01",
         "2024-01-31"

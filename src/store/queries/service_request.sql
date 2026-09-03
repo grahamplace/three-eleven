@@ -88,15 +88,3 @@ ON CONFLICT (service_request_id) DO UPDATE SET
     long = EXCLUDED.long,
     media_url = EXCLUDED.media_url;
 
-/* @name CreateServiceRequestQueryTagsForMany
-   @param service_requests -> ((
-     service_request_id,
-     query_id
-   )...)
-*/
-INSERT INTO service_request_query_tags (
-    service_request_id,
-    query_id
-) VALUES :service_requests
-ON CONFLICT (service_request_id, query_id) DO NOTHING;
-

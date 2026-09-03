@@ -1,91 +1,51 @@
-import { db } from "@/lib/db";
+import { db, type DbConnection } from "@/lib/db";
 import * as queries from "@/store/queries/service_request_query_tags.queries";
-import { ServiceRequest } from "@/entities";
 import { getMatchingQueryIds } from "@/entities/query-definition";
 
-export const createQueryTags = async (serviceRequest: ServiceRequest) => {
-  try {
-    const queryIds = getMatchingQueryIds(serviceRequest);
-
-    if (queryIds.length === 0) {
-      return [];
-    }
-
-    const tags = queryIds.map((queryId) => ({
-      service_request_id: serviceRequest.service_request_id,
-      query_id: queryId,
-    }));
-
-    await queries.createServiceRequestQueryTags.run({ tags }, db);
-    return queryIds;
-  } catch (error) {
-    console.error("Error creating service request query tags:", error);
-    return [];
-  }
+type Taggable = Parameters<typeof getMatchingQueryIds>[0] & {
+  service_request_id: string;
 };
 
-export const createQueryTagsForMany = async (
-  serviceRequests: ServiceRequest[],
-) => {
-  try {
-    const allTags: { service_request_id: string; query_id: string }[] = [];
+export type QueryTag = { service_request_id: string; query_id: string };
 
-    for (const serviceRequest of serviceRequests) {
-      const queryIds = getMatchingQueryIds(serviceRequest);
-
-      if (queryIds.length > 0) {
-        const tags = queryIds.map((queryId) => ({
-          service_request_id: serviceRequest.service_request_id,
-          query_id: queryId,
-        }));
-
-        allTags.push(...tags);
-      }
-    }
-
-    if (allTags.length === 0) {
-      return [];
-    }
-
-    await queries.createServiceRequestQueryTags.run({ tags: allTags }, db);
-    return allTags;
-  } catch (error) {
-    console.error("Error creating service request query tags for many:", error);
-    return [];
-  }
-};
-
-export const findServiceRequestsByQueryId = async (
-  queryId: string,
-  dateStart: string,
-  dateEnd: string,
-) => {
-  try {
-    const results = await queries.findServiceRequestsByQueryId.run(
-      {
+/** Pure: computes the (service_request_id, query_id) rows for a batch. */
+export function computeQueryTags(serviceRequests: Taggable[]): QueryTag[] {
+  const tags: QueryTag[] = [];
+  for (const serviceRequest of serviceRequests) {
+    for (const queryId of getMatchingQueryIds(serviceRequest)) {
+      tags.push({
+        service_request_id: serviceRequest.service_request_id,
         query_id: queryId,
-        date_start: dateStart,
-        date_end: dateEnd,
-      },
-      db,
-    );
+      });
+    }
+  }
+  return tags;
+}
 
-    return results;
-  } catch (error) {
-    console.error("Error finding service requests by query ID:", error);
+/**
+ * Replaces the query tags for a batch of service requests so they reflect the
+ * requests' current fields. Deleting first means a request that is
+ * re-categorized upstream loses its stale tag instead of accumulating both.
+ *
+ * Errors propagate to the caller. Pass a transaction-scoped connection to make
+ * this atomic with the surrounding upsert.
+ */
+export async function replaceQueryTagsForMany(
+  serviceRequests: Taggable[],
+  conn: DbConnection = db,
+): Promise<QueryTag[]> {
+  if (serviceRequests.length === 0) {
     return [];
   }
-};
 
-export const deleteQueryTags = async (serviceRequestId: string) => {
-  try {
-    await queries.deleteServiceRequestQueryTags.run(
-      { service_request_id: serviceRequestId },
-      db,
-    );
-    return true;
-  } catch (error) {
-    console.error("Error deleting service request query tags:", error);
-    return false;
+  await queries.deleteServiceRequestQueryTagsForMany.run(
+    { service_request_ids: serviceRequests.map((sr) => sr.service_request_id) },
+    conn,
+  );
+
+  const tags = computeQueryTags(serviceRequests);
+  if (tags.length > 0) {
+    await queries.createServiceRequestQueryTags.run({ tags }, conn);
   }
-};
+  return tags;
+}

@@ -20,3 +20,11 @@ jobs:
         run: npm run lint:ts
       - name: Unit tests
         run: npm test
+      - name: Build
+        # No database or Redis is reachable here; connections are opened lazily
+        # so the build only needs the env vars that are read at import time.
+        run: npm run build
+        env:
+          MAPBOX_ACCESS_TOKEN: ci-placeholder
+          DATABASE_URL: postgres://ci@localhost:5432/ci
+          REDIS_URL: redis://localhost:6379

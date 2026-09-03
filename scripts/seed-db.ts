@@ -1,9 +1,13 @@
 import { createMany } from "@/store/service-request";
+import { closeDb } from "@/lib/db";
 
 async function run() {
   console.info("Running seed-db script");
-  await testServiceRequestUpsert();
-  process.exit(0);
+  try {
+    await testServiceRequestUpsert();
+  } finally {
+    await closeDb();
+  }
 }
 
 async function testServiceRequestUpsert() {

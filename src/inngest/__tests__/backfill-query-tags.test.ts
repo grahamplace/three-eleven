@@ -9,7 +9,7 @@ vi.mock("@/lib/db", () => ({
 
 // Mock the store functions
 vi.mock("@/store/service-request-query-tags", () => ({
-  createQueryTagsForMany: vi.fn(),
+  replaceQueryTagsForMany: vi.fn(),
 }));
 
 describe("Inngest backfill functions", () => {
@@ -120,11 +120,11 @@ describe("Inngest backfill functions", () => {
         rowCount: 0,
       });
 
-      // Mock the createQueryTagsForMany function
-      const { createQueryTagsForMany } = await import(
+      // Mock the replaceQueryTagsForMany function
+      const { replaceQueryTagsForMany } = await import(
         "@/store/service-request-query-tags"
       );
-      vi.mocked(createQueryTagsForMany).mockResolvedValueOnce([
+      vi.mocked(replaceQueryTagsForMany).mockResolvedValueOnce([
         { service_request_id: "test-1", query_id: "poop" },
         { service_request_id: "test-2", query_id: "graffiti" },
       ]);
@@ -177,11 +177,11 @@ describe("Inngest backfill functions", () => {
         rowCount: 0,
       });
 
-      // Mock the createQueryTagsForMany function
-      const { createQueryTagsForMany } = await import(
+      // Mock the replaceQueryTagsForMany function
+      const { replaceQueryTagsForMany } = await import(
         "@/store/service-request-query-tags"
       );
-      vi.mocked(createQueryTagsForMany).mockResolvedValueOnce([
+      vi.mocked(replaceQueryTagsForMany).mockResolvedValueOnce([
         { service_request_id: "test-1", query_id: "poop" },
       ]);
 

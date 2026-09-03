@@ -3,6 +3,8 @@ import { PreparedQuery } from "@pgtyped/runtime";
 
 export type DateOrString = Date | string;
 
+export type stringArray = string[];
+
 /** 'CreateServiceRequestQueryTags' parameters type */
 export interface ICreateServiceRequestQueryTagsParams {
   tags: readonly {
@@ -104,23 +106,23 @@ const findServiceRequestsByQueryIdIR: any = {
       name: "query_id",
       required: false,
       transform: { type: "scalar" },
-      locs: [{ a: 142, b: 150 }],
+      locs: [{ a: 141, b: 149 }],
     },
     {
       name: "date_start",
       required: false,
       transform: { type: "scalar" },
-      locs: [{ a: 194, b: 204 }],
+      locs: [{ a: 193, b: 203 }],
     },
     {
       name: "date_end",
       required: false,
       transform: { type: "scalar" },
-      locs: [{ a: 210, b: 218 }],
+      locs: [{ a: 209, b: 217 }],
     },
   ],
   statement:
-    "SELECT sr.* \nFROM service_requests sr\nJOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id\nWHERE qt.query_id = :query_id\n  AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end",
+    "SELECT sr.*\nFROM service_requests sr\nJOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id\nWHERE qt.query_id = :query_id\n  AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end",
 };
 
 /**
@@ -138,42 +140,42 @@ export const findServiceRequestsByQueryId = new PreparedQuery<
   IFindServiceRequestsByQueryIdResult
 >(findServiceRequestsByQueryIdIR);
 
-/** 'DeleteServiceRequestQueryTags' parameters type */
-export interface IDeleteServiceRequestQueryTagsParams {
-  service_request_id?: string | null | void;
+/** 'DeleteServiceRequestQueryTagsForMany' parameters type */
+export interface IDeleteServiceRequestQueryTagsForManyParams {
+  service_request_ids?: stringArray | null | void;
 }
 
-/** 'DeleteServiceRequestQueryTags' return type */
-export type IDeleteServiceRequestQueryTagsResult = void;
+/** 'DeleteServiceRequestQueryTagsForMany' return type */
+export type IDeleteServiceRequestQueryTagsForManyResult = void;
 
-/** 'DeleteServiceRequestQueryTags' query type */
-export interface IDeleteServiceRequestQueryTagsQuery {
-  params: IDeleteServiceRequestQueryTagsParams;
-  result: IDeleteServiceRequestQueryTagsResult;
+/** 'DeleteServiceRequestQueryTagsForMany' query type */
+export interface IDeleteServiceRequestQueryTagsForManyQuery {
+  params: IDeleteServiceRequestQueryTagsForManyParams;
+  result: IDeleteServiceRequestQueryTagsForManyResult;
 }
 
-const deleteServiceRequestQueryTagsIR: any = {
-  usedParamSet: { service_request_id: true },
+const deleteServiceRequestQueryTagsForManyIR: any = {
+  usedParamSet: { service_request_ids: true },
   params: [
     {
-      name: "service_request_id",
+      name: "service_request_ids",
       required: false,
       transform: { type: "scalar" },
-      locs: [{ a: 66, b: 84 }],
+      locs: [{ a: 70, b: 89 }],
     },
   ],
   statement:
-    "DELETE FROM service_request_query_tags\nWHERE service_request_id = :service_request_id",
+    "DELETE FROM service_request_query_tags\nWHERE service_request_id = ANY(:service_request_ids)",
 };
 
 /**
  * Query generated from SQL:
  * ```
  * DELETE FROM service_request_query_tags
- * WHERE service_request_id = :service_request_id
+ * WHERE service_request_id = ANY(:service_request_ids)
  * ```
  */
-export const deleteServiceRequestQueryTags = new PreparedQuery<
-  IDeleteServiceRequestQueryTagsParams,
-  IDeleteServiceRequestQueryTagsResult
->(deleteServiceRequestQueryTagsIR);
+export const deleteServiceRequestQueryTagsForMany = new PreparedQuery<
+  IDeleteServiceRequestQueryTagsForManyParams,
+  IDeleteServiceRequestQueryTagsForManyResult
+>(deleteServiceRequestQueryTagsForManyIR);

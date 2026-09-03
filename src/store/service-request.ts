@@ -1,22 +1,23 @@
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import * as queries from "@/store/queries/service_request.queries";
+import * as tagQueries from "@/store/queries/service_request_query_tags.queries";
 import { ServiceRequest } from "@/entities";
 import { supportedMediaDomains } from "@/lib/config";
 import { firstEntity } from "./utils";
-import { createQueryTagsForMany } from "./service-request-query-tags";
+import { replaceQueryTagsForMany } from "./service-request-query-tags";
 
 export async function getLatestUpdatedDatetimeFromPg() {
   const pgLatestUpdatedDatetime = await queries.getLatestUpdatedDatetime.run(
     undefined,
-    db
+    db,
   );
   return pgLatestUpdatedDatetime[0].updated_datetime;
 }
 
-export const find = async (serviceRequesId: string) => {
+export const find = async (serviceRequestId: string) => {
   const results = await queries.findServiceRequestById.run(
-    { service_request_id: serviceRequesId },
-    db
+    { service_request_id: serviceRequestId },
+    db,
   );
   return firstEntity(results, storeToEntity);
 };
@@ -24,7 +25,7 @@ export const find = async (serviceRequesId: string) => {
 export const findByDateAndType = async (
   dateStart: string,
   dateEnd: string,
-  serviceDetails: string[]
+  serviceDetails: string[],
 ) => {
   const results = await queries.findServiceRequestByDateAndType.run(
     {
@@ -32,14 +33,48 @@ export const findByDateAndType = async (
       date_end: dateEnd,
       service_details: serviceDetails,
     },
-    db
+    db,
   );
   return results.map(storeToEntity);
 };
 
-export const createMany = async (
-  serviceRequests: Omit<ServiceRequest, "created_at" | "updated_at">[]
+export const findAll = async (dateStart: string, dateEnd: string) => {
+  const results = await queries.findAllServiceRequestsByDate.run(
+    {
+      date_start: dateStart,
+      date_end: dateEnd,
+    },
+    db,
+  );
+  return results.map(storeToEntity);
+};
+
+export const findByQueryId = async (
+  queryId: string,
+  dateStart: string,
+  dateEnd: string,
 ) => {
+  const results = await tagQueries.findServiceRequestsByQueryId.run(
+    { query_id: queryId, date_start: dateStart, date_end: dateEnd },
+    db,
+  );
+  return results.map(storeToEntity);
+};
+
+export type ServiceRequestInput = Omit<
+  ServiceRequest,
+  "created_at" | "updated_at"
+>;
+
+/**
+ * Upserts a batch of service requests and rewrites their query tags in one
+ * transaction, so a failure in either step leaves the database unchanged.
+ */
+export const createMany = async (serviceRequests: ServiceRequestInput[]) => {
+  if (serviceRequests.length === 0) {
+    return [];
+  }
+
   const mappedRequests = serviceRequests.map((req) => ({
     service_request_id: req.service_request_id,
     requested_datetime: req.requested_datetime,
@@ -60,40 +95,23 @@ export const createMany = async (
     source: req.source,
     data_as_of: req.data_as_of,
     data_loaded_at: req.data_loaded_at,
-    lat: req.lat || null,
-    long: req.long || null,
+    lat: req.lat ?? null,
+    long: req.long ?? null,
     media_url: req.media_url,
   }));
 
-  try {
+  return withTransaction(async (tx) => {
     const result = await queries.createServiceRequests.run(
       { requests: mappedRequests },
-      db
+      tx,
     );
-
-    // After creating the service requests, create the query tags
-    await createQueryTagsForMany(serviceRequests as ServiceRequest[]);
-
+    await replaceQueryTagsForMany(serviceRequests, tx);
     return result;
-  } catch (error) {
-    console.error("Error upserting service requests:", error);
-    throw error;
-  }
-};
-
-export const findAll = async (dateStart: string, dateEnd: string) => {
-  const results = await queries.findAllServiceRequestsByDate.run(
-    {
-      date_start: dateStart,
-      date_end: dateEnd,
-    },
-    db
-  );
-  return results.map(storeToEntity);
+  });
 };
 
 function storeToEntity(
-  result: queries.IFindServiceRequestByIdResult
+  result: queries.IFindServiceRequestByIdResult,
 ): ServiceRequest {
   return {
     ...result,
@@ -110,10 +128,9 @@ function isSupportedMediaUrl(url: string | null) {
   try {
     const domain = new URL(url).hostname;
     return supportedMediaDomains.some((supportedDomain) =>
-      domain.endsWith(supportedDomain)
+      domain.endsWith(supportedDomain),
     );
-  } catch (error) {
-    console.error("Error checking if media url is supported:", error);
+  } catch {
     return false;
   }
 }
