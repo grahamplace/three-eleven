@@ -2,7 +2,6 @@ import React from "react";
 import Image from "next/image";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "./ui/drawer";
 import { ServiceRequest } from "@/entities";
-import type { PointTuple } from "@/lib/api/types";
 import { formatSfDateTime } from "@/lib/time";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -12,27 +11,26 @@ import DateRangePickerWithRange from "@/components/DatePickerWithRange";
 import { RecenterButton } from "@/components/RecenterButton";
 import { LocationButton } from "./LocationButton";
 import { QueryFilterSelector } from "./QueryFilterSelector";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 interface ServiceRequestDrawerProps {
-  selectedRequest: PointTuple | null;
+  selectedRequestId: string | null;
   selectedRequestData: ServiceRequest | null;
 }
 
 export default function ServiceRequestDetail({
-  selectedRequest,
+  selectedRequestId,
   selectedRequestData,
 }: ServiceRequestDrawerProps) {
   const { setSelectedRequestId } = useMapContext();
-
-  const handleUnsetSelectedRequest = () => {
-    setSelectedRequestId(null);
-    setIsImageOverlayOpen(false);
-  };
-
-  const isOpen = Boolean(selectedRequest);
+  const isOpen = Boolean(selectedRequestId);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [isImageOverlayOpen, setIsImageOverlayOpen] = useState(false);
+
+  const handleUnsetSelectedRequest = useCallback(() => {
+    setSelectedRequestId(null);
+    setIsImageOverlayOpen(false);
+  }, [setSelectedRequestId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -47,7 +45,7 @@ export default function ServiceRequestDetail({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isImageOverlayOpen, isOpen]);
+  }, [isImageOverlayOpen, isOpen, handleUnsetSelectedRequest]);
 
   const content = (
     <>
@@ -348,7 +346,7 @@ export default function ServiceRequestDetail({
           {isOpen && (
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
-                {selectedRequest && content}
+                {isOpen && content}
               </div>
             </div>
           )}
@@ -368,7 +366,7 @@ export default function ServiceRequestDetail({
               </DrawerHeader>
             </VisuallyHidden>
             <div className="overflow-y-auto h-full pb-8">
-              {selectedRequest && content}
+              {isOpen && content}
             </div>
           </DrawerContent>
         </Drawer>

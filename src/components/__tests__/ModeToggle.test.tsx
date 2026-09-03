@@ -27,13 +27,13 @@ describe("ModeToggle", () => {
     render(
       <MapProvider>
         <ModeToggle />
-      </MapProvider>
+      </MapProvider>,
     );
 
     expect(screen.getByTestId("mode-toggle-buttons")).toBeInTheDocument();
     expect(screen.getByRole("button")).toHaveAttribute(
       "aria-label",
-      "Toggle map mode"
+      "Toggle map mode",
     );
   });
 
@@ -41,7 +41,7 @@ describe("ModeToggle", () => {
     render(
       <MapProvider>
         <ModeToggle />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const button = screen.getAllByRole("button")[0];
@@ -57,7 +57,7 @@ describe("ModeToggle", () => {
     render(
       <MapProvider>
         <ModeToggle />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const container = screen.getAllByTestId("mode-toggle-buttons")[0];
