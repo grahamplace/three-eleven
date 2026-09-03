@@ -2,6 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MapProvider, useMapContext } from "@/contexts/MapContext";
+import { format, subDays } from "date-fns";
 
 // Mock Next.js router
 const mockPush = vi.fn();
@@ -27,6 +28,9 @@ function TestComponent() {
     <div>
       <div data-testid="mode">{context.mode}</div>
       <div data-testid="selected-query">{context.selectedQuery || "none"}</div>
+      <div data-testid="date-range">
+        {context.dateRange.start} → {context.dateRange.end}
+      </div>
       <button data-testid="set-mode" onClick={() => context.setMode("hexabin")}>
         Set Hexabin
       </button>
@@ -61,7 +65,7 @@ describe("MapContext", () => {
     render(
       <MapProvider>
         <TestComponent />
-      </MapProvider>
+      </MapProvider>,
     );
 
     expect(screen.getByTestId("mode")).toHaveTextContent("heatmap");
@@ -72,7 +76,7 @@ describe("MapContext", () => {
     render(
       <MapProvider>
         <TestComponent />
-      </MapProvider>
+      </MapProvider>,
     );
 
     fireEvent.click(screen.getAllByTestId("set-mode")[0]);
@@ -85,13 +89,13 @@ describe("MapContext", () => {
     render(
       <MapProvider>
         <TestComponent />
-      </MapProvider>
+      </MapProvider>,
     );
 
     fireEvent.click(screen.getAllByTestId("set-query")[0]);
 
     expect(screen.getAllByTestId("selected-query")[0]).toHaveTextContent(
-      "poop"
+      "poop",
     );
     expect(mockPush).toHaveBeenCalledWith("?query=poop", { scroll: false });
   });
@@ -100,7 +104,7 @@ describe("MapContext", () => {
     render(
       <MapProvider>
         <TestComponent />
-      </MapProvider>
+      </MapProvider>,
     );
 
     fireEvent.click(screen.getAllByTestId("set-date-range")[0]);
@@ -110,8 +114,7 @@ describe("MapContext", () => {
     });
   });
 
-  it("initializes from URL parameters", () => {
-    // Set up URL parameters
+  it("initializes from URL parameters on the first render, without navigating", () => {
     mockSearchParams.set("mode", "points");
     mockSearchParams.set("query", "graffiti");
     mockSearchParams.set("start", "2024-01-01");
@@ -120,12 +123,57 @@ describe("MapContext", () => {
     render(
       <MapProvider>
         <TestComponent />
-      </MapProvider>
+      </MapProvider>,
     );
 
-    // The context should initialize with URL values
-    // Note: This might need adjustment based on how the initialization actually works
-    expect(mockPush).toHaveBeenCalled();
+    expect(screen.getByTestId("mode")).toHaveTextContent("points");
+    expect(screen.getByTestId("selected-query")).toHaveTextContent("graffiti");
+    expect(screen.getByTestId("date-range")).toHaveTextContent(
+      "2024-01-01 → 2024-01-31",
+    );
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("ignores an unknown mode in the URL", () => {
+    mockSearchParams.set("mode", "satellite");
+
+    render(
+      <MapProvider>
+        <TestComponent />
+      </MapProvider>,
+    );
+
+    expect(screen.getByTestId("mode")).toHaveTextContent("heatmap");
+  });
+
+  it("defaults the date range to the 7 days ending yesterday", () => {
+    render(
+      <MapProvider>
+        <TestComponent />
+      </MapProvider>,
+    );
+
+    expect(screen.getByTestId("date-range")).toHaveTextContent(
+      `${format(subDays(new Date(), 7), "yyyy-MM-dd")} → ${format(
+        subDays(new Date(), 1),
+        "yyyy-MM-dd",
+      )}`,
+    );
+  });
+
+  it("preserves other URL params when updating one", () => {
+    mockSearchParams.set("query", "graffiti");
+    render(
+      <MapProvider>
+        <TestComponent />
+      </MapProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId("set-mode"));
+
+    expect(mockPush).toHaveBeenCalledWith("?query=graffiti&mode=hexabin", {
+      scroll: false,
+    });
   });
 
   it("throws error when used outside provider", () => {

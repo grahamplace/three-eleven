@@ -1,90 +1,93 @@
 import { describe, it, expect } from "vitest";
-import { binPointsToHexagons } from "@/lib/h3";
-import { ServiceRequestDTOThin } from "@/entities/data-transfer";
+import { latLngToCell } from "h3-js";
+import {
+  getResolutionFromZoom,
+  h3CellsForPoint,
+  hexCountsToFeatures,
+  type HexCount,
+} from "@/lib/h3";
+
+const SF_BOUNDS = {
+  north: 37.811749,
+  south: 37.708075,
+  east: -122.346582,
+  west: -122.513272,
+};
+
+const CITY_CENTER = { lat: 37.7749, lng: -122.4194 };
 
 describe("h3", () => {
-  describe("binPointsToHexagons", () => {
-    it("bins points to hexagons with correct zoom resolution mapping", () => {
-      const points: ServiceRequestDTOThin[] = [
-        {
-          serviceRequestId: "test-1",
-          latitude: 37.7749,
-          longitude: -122.4194,
-          weight: 1,
-        },
-        {
-          serviceRequestId: "test-2",
-          latitude: 37.7897,
-          longitude: -122.3981,
-          weight: 1,
-        },
-      ];
+  describe("getResolutionFromZoom", () => {
+    it("maps zoom bands to resolutions 7 through 11", () => {
+      expect(getResolutionFromZoom(8)).toBe(7);
+      expect(getResolutionFromZoom(9)).toBe(8);
+      expect(getResolutionFromZoom(11.5)).toBe(9);
+      expect(getResolutionFromZoom(13)).toBe(10);
+      expect(getResolutionFromZoom(16)).toBe(11);
+    });
+  });
 
-      const mapBounds = {
-        north: 37.811749,
-        south: 37.708075,
-        east: -122.346582,
-        west: -122.513272,
-      };
+  describe("h3CellsForPoint", () => {
+    it("returns a cell at every rendered resolution", () => {
+      const cells = h3CellsForPoint(CITY_CENTER.lat, CITY_CENTER.lng);
 
-      const result = binPointsToHexagons(points, mapBounds, 11);
-
-      expect(result.type).toBe("FeatureCollection");
-      expect(result.features).toBeInstanceOf(Array);
-      expect(result.features.length).toBeGreaterThan(0);
+      expect(cells.h3_r7).toBe(
+        latLngToCell(CITY_CENTER.lat, CITY_CENTER.lng, 7),
+      );
+      expect(cells.h3_r11).toBe(
+        latLngToCell(CITY_CENTER.lat, CITY_CENTER.lng, 11),
+      );
+      expect(Object.values(cells).every((c) => typeof c === "string")).toBe(
+        true,
+      );
     });
 
-    it("ignores points with null coordinates", () => {
-      const points: ServiceRequestDTOThin[] = [
-        {
-          serviceRequestId: "test-1",
-          latitude: null,
-          longitude: null,
-          weight: 1,
-        },
-        {
-          serviceRequestId: "test-2",
-          latitude: 37.7749,
-          longitude: -122.4194,
-          weight: 1,
-        },
-      ];
+    it("returns all nulls for a point without coordinates", () => {
+      expect(h3CellsForPoint(null, null)).toEqual({
+        h3_r7: null,
+        h3_r8: null,
+        h3_r9: null,
+        h3_r10: null,
+        h3_r11: null,
+      });
+      expect(h3CellsForPoint(37.7, undefined).h3_r9).toBeNull();
+      expect(h3CellsForPoint(NaN, -122.4).h3_r9).toBeNull();
+    });
+  });
 
-      const mapBounds = {
-        north: 37.811749,
-        south: 37.708075,
-        east: -122.346582,
-        west: -122.513272,
-      };
+  describe("hexCountsToFeatures", () => {
+    it("places server-side counts on the matching visible hexes", () => {
+      const cell = latLngToCell(CITY_CENTER.lat, CITY_CENTER.lng, 9);
+      const counts: HexCount[] = [[cell, 42]];
 
-      const result = binPointsToHexagons(points, mapBounds, 11);
+      const result = hexCountsToFeatures(counts, SF_BOUNDS, 9);
 
-      // Should only count the point with valid coordinates
-      const totalCount = result.features.reduce(
-        (sum, feature) => sum + (feature.properties?.count || 0),
-        0
+      const hit = result.features.find((f) => f.properties?.hexId === cell);
+      expect(result.type).toBe("FeatureCollection");
+      expect(hit?.properties?.count).toBe(42);
+    });
+
+    it("includes visible hexes with no requests as zero-count features", () => {
+      const result = hexCountsToFeatures([], SF_BOUNDS, 9);
+
+      expect(result.features.length).toBeGreaterThan(0);
+      expect(result.features.every((f) => f.properties?.count === 0)).toBe(
+        true,
       );
-      expect(totalCount).toBe(1);
+    });
+
+    it("ignores counts for cells outside the SF grid", () => {
+      const oakland = latLngToCell(37.8044, -122.2712, 9);
+
+      const result = hexCountsToFeatures([[oakland, 99]], SF_BOUNDS, 9);
+
+      expect(result.features.some((f) => f.properties?.hexId === oakland)).toBe(
+        false,
+      );
     });
 
     it("returns correct feature schema", () => {
-      const points: ServiceRequestDTOThin[] = [
-        {
-          serviceRequestId: "test-1",
-          latitude: 37.7749,
-          longitude: -122.4194,
-          weight: 1,
-        },
-      ];
-
-      const mapBounds = {
-        north: 37.811749,
-        south: 37.708075,
-        east: -122.346582,
-        west: -122.513272,
-      };
-
-      const result = binPointsToHexagons(points, mapBounds, 11);
+      const result = hexCountsToFeatures([], SF_BOUNDS, 9);
 
       expect(result.features[0]).toHaveProperty("type", "Feature");
       expect(result.features[0]).toHaveProperty("properties.count");
@@ -93,62 +96,26 @@ describe("h3", () => {
       expect(result.features[0]).toHaveProperty("geometry.coordinates");
     });
 
-    it("handles different zoom levels", () => {
-      const points: ServiceRequestDTOThin[] = [
-        {
-          serviceRequestId: "test-1",
-          latitude: 37.7749,
-          longitude: -122.4194,
-          weight: 1,
-        },
-      ];
+    it("produces more, smaller hexes at finer resolutions", () => {
+      const coarse = hexCountsToFeatures([], SF_BOUNDS, 7);
+      const fine = hexCountsToFeatures([], SF_BOUNDS, 9);
 
-      const mapBounds = {
-        north: 37.811749,
-        south: 37.708075,
-        east: -122.346582,
-        west: -122.513272,
-      };
-
-      const resultLowZoom = binPointsToHexagons(points, mapBounds, 8);
-      const resultHighZoom = binPointsToHexagons(points, mapBounds, 12);
-
-      // Higher zoom should result in more hexagons (smaller hexagons)
-      expect(resultHighZoom.features.length).toBeGreaterThanOrEqual(
-        resultLowZoom.features.length
-      );
+      expect(fine.features.length).toBeGreaterThan(coarse.features.length);
     });
 
-    it("filters hexagons to map bounds", () => {
-      const points: ServiceRequestDTOThin[] = [
-        {
-          serviceRequestId: "test-1",
-          latitude: 37.7749,
-          longitude: -122.4194,
-          weight: 1,
-        },
-      ];
-
-      const mapBounds = {
-        north: 37.811749,
-        south: 37.708075,
-        east: -122.346582,
-        west: -122.513272,
+    it("only returns hexes that intersect the viewport", () => {
+      const tinyBounds = {
+        north: CITY_CENTER.lat + 0.001,
+        south: CITY_CENTER.lat - 0.001,
+        east: CITY_CENTER.lng + 0.001,
+        west: CITY_CENTER.lng - 0.001,
       };
 
-      const result = binPointsToHexagons(points, mapBounds, 11);
+      const all = hexCountsToFeatures([], SF_BOUNDS, 9);
+      const few = hexCountsToFeatures([], tinyBounds, 9);
 
-      // All hexagons should be within SF bounds (with some tolerance for floating point precision)
-      result.features.forEach((feature) => {
-        const coordinates = feature.geometry.coordinates[0];
-        coordinates.forEach((coord: number[]) => {
-          const [lng, lat] = coord;
-          expect(lat).toBeGreaterThanOrEqual(37.708075 - 0.01);
-          expect(lat).toBeLessThanOrEqual(37.811749 + 0.01);
-          expect(lng).toBeGreaterThanOrEqual(-122.513272 - 0.01);
-          expect(lng).toBeLessThanOrEqual(-122.346582 + 0.01);
-        });
-      });
+      expect(few.features.length).toBeGreaterThan(0);
+      expect(few.features.length).toBeLessThan(all.features.length / 10);
     });
   });
 });

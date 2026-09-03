@@ -14,8 +14,13 @@ const mockPool = {
 
 const PoolCtor = vi.fn(() => mockPool);
 
+const setTypeParser = vi.fn();
+
 vi.mock("pg", () => ({
-  default: { Pool: PoolCtor },
+  default: {
+    Pool: PoolCtor,
+    types: { builtins: { TIMESTAMP: 1114 }, setTypeParser },
+  },
 }));
 
 describe("lib/db", () => {
@@ -27,6 +32,16 @@ describe("lib/db", () => {
   it("does not open a pool at import time", async () => {
     await import("@/lib/db");
     expect(PoolCtor).not.toHaveBeenCalled();
+  });
+
+  it("parses timestamp columns as Pacific wall-clock time", async () => {
+    await import("@/lib/db");
+
+    expect(setTypeParser).toHaveBeenCalledWith(1114, expect.any(Function));
+    const parser = setTypeParser.mock.calls[0][1] as (v: string) => Date;
+    expect(parser("2024-07-04 12:00:00").toISOString()).toBe(
+      "2024-07-04T19:00:00.000Z",
+    );
   });
 
   it("creates a single pool lazily and reuses it", async () => {

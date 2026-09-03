@@ -21,6 +21,7 @@ vi.mock("next/navigation", () => ({
 // Mock next/image
 vi.mock("next/image", () => ({
   default: vi.fn(({ src, alt, ...props }) => (
+    // eslint-disable-next-line @next/next/no-img-element -- test stand-in for next/image
     <img src={src} alt={alt} {...props} data-testid="next-image" />
   )),
 }));
@@ -81,12 +82,7 @@ vi.mock("@radix-ui/react-visually-hidden", () => ({
 }));
 
 describe("ServiceRequestDetail", () => {
-  const mockSelectedRequest = {
-    serviceRequestId: "12345",
-    latitude: 37.7749,
-    longitude: -122.4194,
-    weight: 1,
-  };
+  const mockSelectedRequestId = "12345";
 
   const mockSelectedRequestData = {
     service_request_id: "12345",
@@ -123,10 +119,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={null}
+          selectedRequestId={null}
           selectedRequestData={null}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     // Should not render the drawer when no request is selected
@@ -137,10 +133,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={mockSelectedRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     // On desktop, it renders a custom drawer without using the Drawer component
@@ -154,10 +150,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={mockSelectedRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     // Look for text containing the request ID
@@ -170,10 +166,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={mockSelectedRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const openStatuses = screen.getAllByText("Open");
@@ -188,16 +184,16 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={mockSelectedRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const graffitiTexts = screen.getAllByText("Graffiti");
     const graffitiWallTexts = screen.getAllByText("Graffiti on wall");
     const graffitiBuildingTexts = screen.getAllByText(
-      "Graffiti on building wall"
+      "Graffiti on building wall",
     );
 
     expect(graffitiTexts.length).toBeGreaterThan(0);
@@ -213,10 +209,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={mockSelectedRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const addressTexts = screen.getAllByText("123 Main St, San Francisco, CA");
@@ -231,10 +227,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={mockSelectedRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const downtownTexts = screen.getAllByText("Downtown");
@@ -254,10 +250,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={mockSelectedRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const images = screen.getAllByTestId("next-image");
@@ -274,16 +270,16 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={requestWithoutMedia}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     // When media_url is null, no images with the specific src should be rendered
     const images = screen.queryAllByTestId("next-image");
     const hasMediaImages = images.some(
-      (img) => img.getAttribute("src") === "https://example.com/image.jpg"
+      (img) => img.getAttribute("src") === "https://example.com/image.jpg",
     );
     expect(hasMediaImages).toBe(false);
   });
@@ -292,10 +288,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={mockSelectedRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const themeToggles = screen.getAllByTestId("theme-toggle");
@@ -344,10 +340,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={minimalRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const requestTitles = screen.getAllByText(/Request 12345/);
@@ -366,10 +362,10 @@ describe("ServiceRequestDetail", () => {
     render(
       <MapProvider>
         <ServiceRequestDetail
-          selectedRequest={mockSelectedRequest}
+          selectedRequestId={mockSelectedRequestId}
           selectedRequestData={mockSelectedRequestData}
         />
-      </MapProvider>
+      </MapProvider>,
     );
 
     // Just check that the component renders

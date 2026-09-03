@@ -1,42 +1,42 @@
+/**
+ * Local equivalent of the Inngest query-tag backfill: re-tags every service
+ * request against the current PREDEFINED_QUERIES, paging by primary key.
+ *
+ *   DATABASE_URL=... npx tsx src/scripts/init-query-tags.ts
+ */
 import { db, closeDb } from "@/lib/db";
 import { replaceQueryTagsForMany } from "@/store/service-request-query-tags";
 
 const BATCH_SIZE = 1000;
 
 async function initQueryTags() {
-  // Get the total count of service requests
   const countResult = await db.query(
     "SELECT COUNT(*) FROM service_requests",
     [],
   );
   const totalCount = parseInt(countResult.rows[0].count, 10);
-
   console.log(`Processing ${totalCount} service requests...`);
 
-  // Process in batches
   let processed = 0;
+  let afterId = "";
 
-  while (processed < totalCount) {
-    console.log(
-      `Processing batch ${processed + 1} to ${Math.min(processed + BATCH_SIZE, totalCount)}...`,
+  for (;;) {
+    const { rows } = await db.query(
+      `SELECT * FROM service_requests
+        WHERE service_request_id > $1
+        ORDER BY service_request_id
+        LIMIT $2`,
+      [afterId, BATCH_SIZE],
     );
+    if (rows.length === 0) break;
 
-    // Get a batch of service requests
-    const serviceRequests = await db.query(
-      `SELECT * FROM service_requests ORDER BY service_request_id LIMIT $1 OFFSET $2`,
-      [BATCH_SIZE, processed],
-    );
-
-    // Create query tags for the batch
-    const tags = await replaceQueryTagsForMany(serviceRequests.rows);
+    const tags = await replaceQueryTagsForMany(rows);
+    processed += rows.length;
+    afterId = rows[rows.length - 1].service_request_id;
 
     console.log(
-      `Created ${tags.length} query tags for ${serviceRequests.rows.length} service requests`,
-    );
-
-    processed += serviceRequests.rows.length;
-    console.log(
-      `Progress: ${processed}/${totalCount} (${Math.round((processed / totalCount) * 100)}%)`,
+      `Created ${tags.length} tags for ${rows.length} requests. ` +
+        `Progress: ${processed}/${totalCount} (${Math.round((processed / totalCount) * 100)}%)`,
     );
   }
 
