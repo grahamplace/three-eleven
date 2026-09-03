@@ -21,7 +21,6 @@ import {
 } from "@/lib/h3";
 import { useMapContext } from "@/contexts/MapContext";
 import { formatSfDate } from "@/lib/time";
-import type { PointTuple } from "@/lib/api/types";
 import ServiceRequestDetail from "./ServiceRequestDetail";
 import { Badge } from "./ui/badge";
 import { useMapData } from "./map/useMapData";
@@ -71,9 +70,6 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
 
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
   const [mapBounds, setMapBounds] = useState<MapBounds>(SF_BOUNDS);
-  const [selectedRequest, setSelectedRequest] = useState<PointTuple | null>(
-    null,
-  );
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
 
@@ -86,12 +82,8 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     resolution,
   });
 
-  // Clearing the selection elsewhere (URL, sidebar close) clears it here too.
-  useEffect(() => {
-    if (!selectedRequestId) setSelectedRequest(null);
-  }, [selectedRequestId]);
-
-  const selectedId = selectedRequest?.[0] ?? null;
+  // Selection lives in the URL (?id=), so deep links open the panel too.
+  const selectedId = selectedRequestId;
 
   useEffect(() => {
     if (!selectedId) {
@@ -146,13 +138,11 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
 
   const handleMapInteraction = (event: MapMouseEvent | MapTouchEvent) => {
     if (!event.features?.length) {
-      setSelectedRequest(null);
       setSelectedRequestId(null);
       return;
     }
     const { lng, lat } = event.lngLat;
     const requestId = event.features[0].properties?.serviceRequestId || "";
-    setSelectedRequest([requestId, lng, lat]);
     setSelectedRequestId(requestId);
     if (map) centerOnPoint(map, [lng, lat], { isDesktop });
   };
@@ -224,7 +214,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
         </div>
 
         <ServiceRequestDetail
-          selectedRequest={selectedRequest}
+          selectedRequestId={selectedId}
           selectedRequestData={selectedRequestData}
         />
         <div className="fixed right-0 bottom-0 p-2">
