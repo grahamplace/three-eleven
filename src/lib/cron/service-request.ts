@@ -6,6 +6,7 @@ import {
 import { ServiceRequest } from "@/entities";
 import { envobj, string } from "envobj";
 import sfdataClient, { ResourceId } from "@/lib/sfdata";
+import { fromSfWallClock, toSfWallClock } from "@/lib/time";
 
 const env = envobj(
   {
@@ -14,7 +15,7 @@ const env = envobj(
   process.env as Record<string, string | undefined>,
   {
     ENV: "development",
-  }
+  },
 );
 
 // 50k is maximum allowed by SODA 2.1
@@ -25,7 +26,8 @@ const DELAY_MS = 500;
 // It takes ~1.5s per batch. 20 batches is ~30s. Vercel free plan has max timeout limit of 60s. In dev, can run more batches per run.
 const MAX_BATCHES_PER_RUN = env.ENV === "development" ? 1000 : 20;
 
-// Type for raw API response from SF 311 data
+// Type for raw API response from SF 311 data. All datetimes are Socrata
+// floating timestamps: Pacific wall-clock strings with no zone.
 type RawServiceRequestData = {
   service_request_id: string;
   requested_datetime: string;
@@ -53,9 +55,11 @@ type RawServiceRequestData = {
 
 async function fetchDataChunk(
   offset: number,
-  latestUpdatedDatetime: Date
+  latestUpdatedDatetime: Date,
 ): Promise<RawServiceRequestData[]> {
-  const formattedDate = latestUpdatedDatetime.toISOString().slice(0, 23);
+  // SODA compares floating timestamps as Pacific wall-clock, so format the
+  // watermark the same way rather than as UTC.
+  const formattedDate = toSfWallClock(latestUpdatedDatetime);
 
   const result = await sfdataClient
     .query(ResourceId.SERVICE_REQUESTS)
@@ -68,62 +72,85 @@ async function fetchDataChunk(
   return result.data;
 }
 
-export async function ingestServiceRequests() {
-  let batchesProcessed = 0;
+export type IngestOptions = {
+  /** Upper bound on batches per run; the default fits a serverless timeout. */
+  maxBatches?: number;
+  /** Pause between SODA pages, to stay clear of rate limits. */
+  delayMs?: number;
+};
+
+export type IngestSummary = {
+  totalProcessed: number;
+  batches: number;
+  /** True when the run stopped at maxBatches with more rows still upstream. */
+  hitBatchCap: boolean;
+};
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export async function ingestServiceRequests({
+  maxBatches = MAX_BATCHES_PER_RUN,
+  delayMs = DELAY_MS,
+}: IngestOptions = {}): Promise<IngestSummary> {
+  // Pagination is by offset, so the watermark must stay fixed across pages.
+  const latestUpdatedDatetime = await getLatestUpdatedDatetime();
+  let batches = 0;
   let offset = 0;
   let totalProcessed = 0;
-  // Because we use the offset to paginate the query, we should use a fixed updated_datetime for all batches
-  const latestUpdatedDatetime = await getLatestUpdatedDatetime();
+  let hitBatchCap = false;
 
-  try {
-    while (batchesProcessed < MAX_BATCHES_PER_RUN) {
-      console.info(
-        `Fetching batch ${batchesProcessed + 1} with offset ${offset} and latestUpdatedDatetime ${latestUpdatedDatetime}`
-      );
-      const rawData = await fetchDataChunk(offset, latestUpdatedDatetime);
-
-      if (rawData.length === 0) {
-        console.info("No more data to fetch");
-        break;
-      }
-
-      const transformedData = transformData(rawData);
-      await createMany(transformedData);
-
-      totalProcessed += rawData.length;
-      console.info(`Processed ${totalProcessed} records so far`);
-
-      if (rawData.length < BATCH_SIZE) {
-        console.info("Reached end of data");
-        break;
-      }
-
-      offset += BATCH_SIZE;
-      batchesProcessed++;
-
-      // Add delay to avoid any rate limiting
-      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+  for (;;) {
+    if (batches >= maxBatches) {
+      hitBatchCap = true;
+      break;
     }
 
-    // After batch completes, set the latest updated datetime
-    await setLatestUpdatedDatetime();
+    console.info(
+      `Fetching batch ${batches + 1} at offset ${offset} (updated after ${toSfWallClock(latestUpdatedDatetime)})`,
+    );
+    const rawData = await fetchDataChunk(offset, latestUpdatedDatetime);
+    if (rawData.length === 0) {
+      break;
+    }
 
-    console.info(`Completed! Total records processed: ${totalProcessed}`);
-  } catch (error) {
-    console.error("Error scraping data:", error);
-    throw error;
+    await createMany(transformData(rawData));
+    totalProcessed += rawData.length;
+    batches++;
+    offset += BATCH_SIZE;
+    console.info(`Processed ${totalProcessed} records so far`);
+
+    if (rawData.length < BATCH_SIZE) {
+      break; // short page: nothing left upstream
+    }
+    if (delayMs > 0) await sleep(delayMs);
   }
+
+  // Advance the watermark to the newest row we now hold. Rows we did not reach
+  // this run have a later updated_datetime and are picked up next run.
+  await setLatestUpdatedDatetime();
+
+  if (hitBatchCap) {
+    console.warn(
+      `Ingest stopped at the ${maxBatches}-batch cap with more rows upstream; ` +
+        `the next run resumes from the new watermark. If this happens every run, ingestion is falling behind.`,
+    );
+  }
+  console.info(
+    `Ingest complete: ${totalProcessed} records in ${batches} batches${hitBatchCap ? " (cap reached)" : ""}`,
+  );
+
+  return { totalProcessed, batches, hitBatchCap };
 }
 
 export function transformData(
-  rawData: RawServiceRequestData[]
+  rawData: RawServiceRequestData[],
 ): Omit<ServiceRequest, "created_at" | "updated_at">[] {
   return rawData.map((item) => ({
     service_request_id: item.service_request_id,
-    requested_datetime: new Date(item.requested_datetime),
-    closed_date: item.closed_date ? new Date(item.closed_date) : null,
+    requested_datetime: fromSfWallClock(item.requested_datetime),
+    closed_date: item.closed_date ? fromSfWallClock(item.closed_date) : null,
     updated_datetime: item.updated_datetime
-      ? new Date(item.updated_datetime)
+      ? fromSfWallClock(item.updated_datetime)
       : null,
     status_description: item.status_description || null,
     status_notes: item.status_notes || null,
@@ -141,8 +168,10 @@ export function transformData(
     analysis_neighborhood: item.analysis_neighborhood || null,
     police_district: item.police_district || null,
     source: item.source || null,
-    data_as_of: item.data_as_of ? new Date(item.data_as_of) : null,
-    data_loaded_at: item.data_loaded_at ? new Date(item.data_loaded_at) : null,
+    data_as_of: item.data_as_of ? fromSfWallClock(item.data_as_of) : null,
+    data_loaded_at: item.data_loaded_at
+      ? fromSfWallClock(item.data_loaded_at)
+      : null,
     lat: item.lat ? parseFloat(item.lat) : null,
     long: item.long ? parseFloat(item.long) : null,
     media_url: item.media_url?.url || null,

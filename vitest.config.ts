@@ -2,6 +2,9 @@ import { defineConfig } from "vitest/config";
 import path from "path";
 
 export default defineConfig({
+  esbuild: {
+    jsx: "automatic",
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -13,6 +16,7 @@ export default defineConfig({
     include: [
       "src/entities/**/*.test.ts",
       "src/lib/**/*.test.ts",
+      "src/app/**/*.test.ts",
       "src/store/**/*.test.ts",
       "src/inngest/**/*.test.ts",
       "src/components/**/*.test.tsx",

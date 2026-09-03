@@ -1,6 +1,63 @@
 import { latLngToCell, cellToBoundary, gridDisk } from "h3-js";
 import * as turf from "@turf/turf";
-import { ServiceRequestDTOThin } from "@/entities/data-transfer";
+
+/** H3 resolutions the map renders, chosen from the current zoom level. */
+export const H3_RESOLUTIONS = [7, 8, 9, 10, 11] as const;
+export type H3Resolution = (typeof H3_RESOLUTIONS)[number];
+
+/** `[h3CellId, count]` as returned by the hexbins API. */
+export type HexCount = [cell: string, count: number];
+
+export type MapBounds = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+};
+
+export type H3Cells = {
+  h3_r7: string | null;
+  h3_r8: string | null;
+  h3_r9: string | null;
+  h3_r10: string | null;
+  h3_r11: string | null;
+};
+
+// Mapbox zoom levels: 0 (furthest) to 22 (closest)
+// H3 resolutions: 0 (largest) to 15 (smallest)
+export function getResolutionFromZoom(zoom: number): H3Resolution {
+  if (zoom < 9) return 7;
+  if (zoom < 11) return 8;
+  if (zoom < 13) return 9;
+  if (zoom < 15) return 10;
+  return 11;
+}
+
+/**
+ * H3 cell ids for a point at every rendered resolution. Stored on each
+ * service request at write time so hexbin counts are a GROUP BY in Postgres.
+ */
+export function h3CellsForPoint(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+): H3Cells {
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
+    return {
+      h3_r7: null,
+      h3_r8: null,
+      h3_r9: null,
+      h3_r10: null,
+      h3_r11: null,
+    };
+  }
+  return {
+    h3_r7: latLngToCell(lat, lng, 7),
+    h3_r8: latLngToCell(lat, lng, 8),
+    h3_r9: latLngToCell(lat, lng, 9),
+    h3_r10: latLngToCell(lat, lng, 10),
+    h3_r11: latLngToCell(lat, lng, 11),
+  };
+}
 
 // SF boundary as GeoJSON polygon (simplified for performance)
 const SF_LAND_BOUNDARY: GeoJSON.Feature<GeoJSON.Polygon> = {
@@ -99,8 +156,19 @@ export type H3BinnedFeature = {
   };
 };
 
+function hexPolygon(hexId: string): GeoJSON.Feature<GeoJSON.Polygon> {
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: {
+      type: "Polygon",
+      coordinates: [cellToBoundary(hexId, true)],
+    },
+  };
+}
+
 // Generate a static set of hexagons covering SF
-function generateSFHexagonGrid(resolution: number = 9): string[] {
+function generateSFHexagonGrid(resolution: number): string[] {
   const hexagons = new Set<string>();
 
   // Generate hexagons from seed points
@@ -111,57 +179,33 @@ function generateSFHexagonGrid(resolution: number = 9): string[] {
   });
 
   // Filter hexagons to only those that intersect with SF land
-  return Array.from(hexagons).filter((hexId) => {
-    const hexBoundary = cellToBoundary(hexId, true);
-    const hexFeature: GeoJSON.Feature<GeoJSON.Polygon> = {
-      type: "Feature",
-      properties: {},
-      geometry: {
-        type: "Polygon",
-        coordinates: [hexBoundary],
-      },
-    };
-
-    return turf.booleanIntersects(hexFeature, SF_LAND_BOUNDARY);
-  });
+  return Array.from(hexagons).filter((hexId) =>
+    turf.booleanIntersects(hexPolygon(hexId), SF_LAND_BOUNDARY),
+  );
 }
 
-// Memoize the SF hexagon grid since it's static
-let sfHexagonGridCache: { resolution: number; hexagons: string[] } | null =
-  null;
+// Memoize the SF hexagon grid per resolution since it's static
+const sfHexagonGridCache = new Map<number, string[]>();
 
 function getSFHexagonGrid(resolution: number): string[] {
-  if (!sfHexagonGridCache || sfHexagonGridCache.resolution !== resolution) {
-    sfHexagonGridCache = {
-      resolution,
-      hexagons: generateSFHexagonGrid(resolution),
-    };
+  let grid = sfHexagonGridCache.get(resolution);
+  if (!grid) {
+    grid = generateSFHexagonGrid(resolution);
+    sfHexagonGridCache.set(resolution, grid);
   }
-  return sfHexagonGridCache.hexagons;
+  return grid;
 }
 
-export function binPointsToHexagons(
-  points: ServiceRequestDTOThin[],
-  mapBounds: { north: number; south: number; east: number; west: number },
-  zoom: number
+/**
+ * Turns per-cell counts (aggregated in Postgres) into a GeoJSON layer for the
+ * hexes currently in view. Visible cells with no requests are included with a
+ * count of 0 so the grid outline still renders.
+ */
+export function hexCountsToFeatures(
+  counts: HexCount[],
+  mapBounds: MapBounds,
+  resolution: H3Resolution,
 ): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
-  // Convert zoom level to appropriate H3 resolution
-  // H3 resolutions: 0 (largest) to 15 (smallest)
-  // Mapbox zoom levels: 0 (furthest) to 22 (closest)
-  const getResolutionFromZoom = (zoom: number): number => {
-    if (zoom < 9) return 7;
-    if (zoom < 11) return 8;
-    if (zoom < 13) return 9;
-    if (zoom < 15) return 10;
-    return 11;
-  };
-
-  const resolution = getResolutionFromZoom(zoom);
-
-  // Get the static SF hexagon grid
-  const allHexagons = getSFHexagonGrid(resolution);
-
-  // Create a map bounds polygon for intersection testing
   const mapBoundsPolygon: GeoJSON.Feature<GeoJSON.Polygon> = {
     type: "Feature",
     properties: {},
@@ -179,55 +223,23 @@ export function binPointsToHexagons(
     },
   };
 
-  // Filter hexagons to only those within map bounds
-  const visibleHexagons = allHexagons.filter((hexId) => {
-    const hexBoundary = cellToBoundary(hexId, true);
-    const hexFeature: GeoJSON.Feature<GeoJSON.Polygon> = {
-      type: "Feature",
-      properties: {},
-      geometry: {
-        type: "Polygon",
-        coordinates: [hexBoundary],
-      },
-    };
-    return turf.booleanIntersects(hexFeature, mapBoundsPolygon);
-  });
-
-  // Create a map to store point counts per hexagon
-  const hexagonCounts = new Map<string, number>();
-
-  // Initialize visible hexagons with 0 count
-  visibleHexagons.forEach((hexId) => {
-    hexagonCounts.set(hexId, 0);
-  });
-
-  // Count points in hexagons
-  points.forEach((point) => {
-    if (point.latitude && point.longitude) {
-      const hexId = latLngToCell(point.latitude, point.longitude, resolution);
-      if (hexagonCounts.has(hexId)) {
-        hexagonCounts.set(hexId, (hexagonCounts.get(hexId) || 0) + 1);
-      }
-    }
-  });
-
-  // Convert all hexagons to GeoJSON features
-  const features: H3BinnedFeature[] = Array.from(hexagonCounts.entries()).map(
-    ([hexId, count]) => {
-      const coordinates = cellToBoundary(hexId, true);
-      return {
-        type: "Feature",
-        properties: {
-          count,
-          hexId,
-        },
-        geometry: {
-          type: "Polygon",
-          coordinates: [coordinates],
-        },
-      };
-    }
+  const visibleHexagons = getSFHexagonGrid(resolution).filter((hexId) =>
+    turf.booleanIntersects(hexPolygon(hexId), mapBoundsPolygon),
   );
+
+  const countByCell = new Map<string, number>(counts);
+
+  const features: H3BinnedFeature[] = visibleHexagons.map((hexId) => ({
+    type: "Feature",
+    properties: {
+      count: countByCell.get(hexId) ?? 0,
+      hexId,
+    },
+    geometry: {
+      type: "Polygon",
+      coordinates: [cellToBoundary(hexId, true)],
+    },
+  }));
 
   return {
     type: "FeatureCollection",

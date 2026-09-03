@@ -47,13 +47,4 @@ describe("RecenterButton", () => {
     const button = screen.getAllByRole("button")[0];
     expect(button).toHaveClass("p-2", "rounded-lg");
   });
-
-  // These tests are skipped due to test environment issues with multiple component instances
-  it.skip("handles case when map is undefined", () => {
-    // Test skipped
-  });
-
-  it.skip("handles case when map.flyTo is undefined", () => {
-    // Test skipped
-  });
 });

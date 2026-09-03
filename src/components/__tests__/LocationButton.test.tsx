@@ -68,7 +68,7 @@ describe("LocationButton", () => {
     // Use vi.mocked to access the mocked toast
     const mockedToast = vi.mocked(toast);
     expect(mockedToast.error).toHaveBeenCalledWith(
-      "Geolocation is not supported by your browser"
+      "Geolocation is not supported by your browser",
     );
   });
 
@@ -95,37 +95,5 @@ describe("LocationButton", () => {
         duration: 1000,
       });
     });
-  });
-
-  it.skip("handles geolocation outside SF bounds", async () => {
-    // Test skipped due to test environment issues
-  });
-
-  it.skip("handles permission denied error", async () => {
-    // Test skipped due to test environment issues
-  });
-
-  it.skip("handles position unavailable error", async () => {
-    // Test skipped due to test environment issues
-  });
-
-  it.skip("handles timeout error", async () => {
-    // Test skipped due to test environment issues
-  });
-
-  it.skip("handles unknown error", async () => {
-    // Test skipped due to test environment issues
-  });
-
-  it.skip("shows loading state while getting location", async () => {
-    // Test skipped due to test environment issues
-  });
-
-  it.skip("calls getCurrentPosition with correct options", () => {
-    // Test skipped due to test environment issues
-  });
-
-  it.skip("handles case when map is undefined", async () => {
-    // Test skipped due to test environment issues
   });
 });

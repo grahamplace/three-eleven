@@ -3,52 +3,77 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import MapComponent from "@/components/Map";
 import { MapProvider } from "@/contexts/MapContext";
+import { getServiceRequestById } from "@/lib/actions/service-requests";
+import { toast } from "sonner";
 
-// Mock react-map-gl
-vi.mock("react-map-gl", () => ({
-  default: vi.fn(({ children, onClick, onTouchEnd, onMoveEnd, onLoad }) => {
-    React.useEffect(() => {
-      if (onLoad) onLoad();
-      if (onMoveEnd) onMoveEnd();
-    }, []);
-    return (
-      <div data-testid="mapbox-map" onClick={onClick} onTouchEnd={onTouchEnd}>
-        {children}
-      </div>
-    );
+// Mutable search params so individual tests can seed URL state
+let searchParams = new URLSearchParams();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
   }),
-  Source: vi.fn(({ children }) => (
-    <div data-testid="map-source">{children}</div>
-  )),
-  Layer: vi.fn(() => <div data-testid="map-layer" />),
-  useMap: vi.fn(() => ({
-    map: {
-      flyTo: vi.fn(),
-      getBounds: vi.fn(() => ({
-        getNorth: vi.fn(() => 37.811749),
-        getSouth: vi.fn(() => 37.708075),
-        getEast: vi.fn(() => -122.346582),
-        getWest: vi.fn(() => -122.513272),
-      })),
-      getZoom: vi.fn(() => 11.5),
-      getContainer: vi.fn(() => ({ offsetWidth: 1200 })),
-      project: vi.fn(() => ({ x: 600, y: 400 })),
-      unproject: vi.fn(() => [-122.4194, 37.7749] as [number, number]),
-    },
-  })),
-  MapProvider: vi.fn(({ children }) => (
-    <div data-testid="map-provider">{children}</div>
-  )),
+  useSearchParams: () => searchParams,
+  usePathname: () => "/",
 }));
 
-// Mock server actions
+// Mock react-map-gl. The Map mock forwards click events with the same shape
+// react-map-gl uses (features + lngLat) so handlers can be exercised.
+vi.mock("react-map-gl", async () => {
+  const React = await import("react");
+  return {
+    default: vi.fn(({ children, onClick, onMoveEnd, onLoad }) => {
+      React.useEffect(() => {
+        onLoad?.();
+        onMoveEnd?.();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
+      return (
+        <div
+          data-testid="mapbox-map"
+          onClick={(e) => {
+            const detail = (e as unknown as { detail?: unknown }).detail;
+            onClick?.(detail ?? { features: [], lngLat: { lng: 0, lat: 0 } });
+          }}
+        >
+          {children}
+        </div>
+      );
+    }),
+    Source: vi.fn(({ children }) => (
+      <div data-testid="map-source">{children}</div>
+    )),
+    Layer: vi.fn(() => <div data-testid="map-layer" />),
+    useMap: vi.fn(() => ({
+      map: {
+        flyTo: vi.fn(),
+        getBounds: vi.fn(() => ({
+          getNorth: vi.fn(() => 37.811749),
+          getSouth: vi.fn(() => 37.708075),
+          getEast: vi.fn(() => -122.346582),
+          getWest: vi.fn(() => -122.513272),
+        })),
+        getZoom: vi.fn(() => 11.5),
+        getContainer: vi.fn(() => ({ offsetWidth: 1200 })),
+        project: vi.fn(() => ({ x: 600, y: 400 })),
+        unproject: vi.fn(() => [-122.4194, 37.7749] as [number, number]),
+      },
+    })),
+    MapProvider: vi.fn(({ children }) => (
+      <div data-testid="map-provider">{children}</div>
+    )),
+  };
+});
+
 vi.mock("@/lib/actions/service-requests", () => ({
-  getServiceRequests: vi.fn(),
   getServiceRequestById: vi.fn(),
-  getServiceRequestsByPredefinedQuery: vi.fn(),
 }));
 
-// Mock hooks
 vi.mock("@/hooks/use-media-query", () => ({
   useMediaQuery: vi.fn(() => true), // Default to desktop
 }));
@@ -57,29 +82,26 @@ vi.mock("next-themes", () => ({
   useTheme: vi.fn(() => ({ theme: "light" })),
 }));
 
-// Mock h3 utility
-vi.mock("@/lib/h3", () => ({
-  binPointsToHexagons: vi.fn(() => ({
+// Keep the real zoom→resolution mapping; stub the grid geometry, which is slow.
+vi.mock("@/lib/h3", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/h3")>()),
+  hexCountsToFeatures: vi.fn(() => ({
     type: "FeatureCollection",
     features: [],
   })),
 }));
 
-// Mock sonner toast
 vi.mock("sonner", () => ({
   toast: {
     error: vi.fn(),
   },
 }));
 
-// Mock ServiceRequestDetail component
 vi.mock("@/components/ServiceRequestDetail", () => ({
-  default: vi.fn(({ selectedRequest, selectedRequestData }) => (
+  default: vi.fn(({ selectedRequestId, selectedRequestData }) => (
     <div data-testid="service-request-detail">
-      {selectedRequest && (
-        <div data-testid="selected-request">
-          {selectedRequest.serviceRequestId}
-        </div>
+      {selectedRequestId && (
+        <div data-testid="selected-request">{selectedRequestId}</div>
       )}
       {selectedRequestData && (
         <div data-testid="request-data">
@@ -90,31 +112,67 @@ vi.mock("@/components/ServiceRequestDetail", () => ({
   )),
 }));
 
-describe.skip("MapComponent", () => {
-  const defaultProps = {
-    token: "test-token",
-    dataAsOf: new Date("2024-01-01"),
-  };
+const mockedGetServiceRequestById = vi.mocked(getServiceRequestById);
 
+// Map data comes from the /api/points and /api/hexbins routes.
+const fetchMock = vi.fn();
+vi.stubGlobal("fetch", fetchMock);
+
+const jsonResponse = (body: unknown) =>
+  Promise.resolve(
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+
+const fetchedPaths = () =>
+  fetchMock.mock.calls.map((c) => {
+    const url = new URL(String(c[0]), "http://localhost");
+    return { path: url.pathname, params: url.searchParams };
+  });
+
+const clickFeature = (el: HTMLElement, serviceRequestId: string) => {
+  const event = new MouseEvent("click", { bubbles: true });
+  Object.defineProperty(event, "detail", {
+    value: {
+      features: [{ properties: { serviceRequestId } }],
+      lngLat: { lng: -122.4194, lat: 37.7749 },
+    },
+  });
+  fireEvent(el, event);
+};
+
+const renderMap = (props?: Partial<{ token: string; dataAsOf: Date }>) =>
+  render(
+    <MapProvider>
+      <MapComponent
+        token="test-token"
+        dataAsOf={new Date("2024-01-01")}
+        {...props}
+      />
+    </MapProvider>,
+  );
+
+describe("MapComponent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParams = new URLSearchParams();
 
-    // Default mock implementations
-    const {
-      getServiceRequests,
-      getServiceRequestById,
-    } = require("@/lib/actions/service-requests");
+    // Answer each route with its own payload shape. The first render fetches
+    // points before URL state hydrates, so a hexabin test still sees a points
+    // request in flight.
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = new URL(String(input), "http://localhost");
+      return url.pathname === "/api/hexbins"
+        ? jsonResponse({
+            resolution: Number(url.searchParams.get("res")),
+            cells: [],
+          })
+        : jsonResponse({ points: [["1", -122.4194, 37.7749]] });
+    });
 
-    getServiceRequests.mockResolvedValue([
-      {
-        serviceRequestId: "1",
-        latitude: 37.7749,
-        longitude: -122.4194,
-        weight: 1,
-      },
-    ]);
-
-    getServiceRequestById.mockResolvedValue({
+    mockedGetServiceRequestById.mockResolvedValue({
       service_request_id: "1",
       requested_datetime: new Date(),
       closed_date: null,
@@ -143,11 +201,7 @@ describe.skip("MapComponent", () => {
   });
 
   it("renders map component with correct structure", () => {
-    render(
-      <MapProvider>
-        <MapComponent {...defaultProps} />
-      </MapProvider>
-    );
+    renderMap();
 
     expect(screen.getByTestId("map")).toBeInTheDocument();
     expect(screen.getByTestId("mapbox-map")).toBeInTheDocument();
@@ -155,196 +209,127 @@ describe.skip("MapComponent", () => {
   });
 
   it("shows loading overlay initially", () => {
-    render(
-      <MapProvider>
-        <MapComponent {...defaultProps} />
-      </MapProvider>
-    );
+    renderMap();
 
     expect(screen.getByText("Loading data...")).toBeInTheDocument();
   });
 
-  it("fetches and displays service request data", async () => {
-    render(
-      <MapProvider>
-        <MapComponent {...defaultProps} />
-      </MapProvider>
-    );
+  it("fetches points for the date range when no query is selected", async () => {
+    renderMap();
 
     await waitFor(() => {
-      expect(
-        require("@/lib/actions/service-requests").getServiceRequests
-      ).toHaveBeenCalledWith(expect.any(String), expect.any(String), []);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
+    const [{ path, params }] = fetchedPaths();
+    expect(path).toBe("/api/points");
+    expect(params.get("start")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(params.get("end")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(params.has("query")).toBe(false);
 
     await waitFor(() => {
       expect(screen.queryByText("Loading data...")).not.toBeInTheDocument();
     });
   });
 
-  it("handles data fetching errors gracefully", async () => {
-    const errorMessage = "Failed to fetch data";
-    require("@/lib/actions/service-requests").getServiceRequests.mockRejectedValue(
-      new Error(errorMessage)
+  it("passes the predefined query and dates from the URL through to the API", async () => {
+    searchParams = new URLSearchParams(
+      "query=graffiti&start=2024-01-01&end=2024-01-31",
     );
 
-    const { toast } = await import("sonner");
+    renderMap();
 
-    render(
-      <MapProvider>
-        <MapComponent {...defaultProps} />
-      </MapProvider>
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    const { path, params } = fetchedPaths().at(-1)!;
+    expect(path).toBe("/api/points");
+    expect(params.get("query")).toBe("graffiti");
+    expect(params.get("start")).toBe("2024-01-01");
+    expect(params.get("end")).toBe("2024-01-31");
+  });
+
+  it("requests server-side hexbin counts at the zoom's resolution in hexabin mode", async () => {
+    searchParams = new URLSearchParams("mode=hexabin");
+
+    renderMap();
+
+    await waitFor(() => {
+      expect(fetchedPaths().some((f) => f.path === "/api/hexbins")).toBe(true);
+    });
+    // Mode is hydrated from the URL after first render, so the most recent
+    // request is the one that reflects hexabin mode.
+    const last = fetchedPaths().at(-1)!;
+    expect(last.path).toBe("/api/hexbins");
+    // Initial zoom is 11.5, which maps to resolution 9.
+    expect(last.params.get("res")).toBe("9");
+  });
+
+  it("surfaces a toast when the API responds with an error", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(new Response("nope", { status: 500 })),
     );
+
+    renderMap();
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
-        "Failed to load map data. Please try again."
+        "Failed to load map data. Please try again.",
       );
     });
+    expect(screen.queryByText("Loading data...")).not.toBeInTheDocument();
   });
 
-  it("displays data updated badge with correct date", () => {
-    const testDate = new Date("2024-01-15");
-
-    render(
-      <MapProvider>
-        <MapComponent {...defaultProps} dataAsOf={testDate} />
-      </MapProvider>
-    );
+  it("displays the data updated badge", () => {
+    renderMap({ dataAsOf: new Date("2024-01-15") });
 
     expect(screen.getByText(/Data updated:/)).toBeInTheDocument();
   });
 
-  it("handles map interactions and selects service requests", async () => {
-    render(
-      <MapProvider>
-        <MapComponent {...defaultProps} />
-      </MapProvider>
-    );
+  it("loads request details when a feature is clicked", async () => {
+    renderMap();
 
     await waitFor(() => {
       expect(screen.queryByText("Loading data...")).not.toBeInTheDocument();
     });
 
-    const mapElement = screen.getByTestId("mapbox-map");
-
-    // Simulate clicking on a map feature
-    fireEvent.click(mapElement, {
-      features: [
-        {
-          properties: {
-            serviceRequestId: "1",
-          },
-        },
-      ],
-      lngLat: {
-        lng: -122.4194,
-        lat: 37.7749,
-      },
-    });
+    clickFeature(screen.getByTestId("mapbox-map"), "1");
 
     await waitFor(() => {
-      expect(
-        require("@/lib/actions/service-requests").getServiceRequestById
-      ).toHaveBeenCalledWith("1");
+      expect(mockedGetServiceRequestById).toHaveBeenCalledWith("1");
+    });
+    expect(screen.getByTestId("selected-request")).toHaveTextContent("1");
+    await waitFor(() => {
+      expect(screen.getByTestId("request-data")).toHaveTextContent("1");
     });
   });
 
   it("clears selection when clicking on empty map area", async () => {
-    render(
-      <MapProvider>
-        <MapComponent {...defaultProps} />
-      </MapProvider>
-    );
+    renderMap();
 
     await waitFor(() => {
       expect(screen.queryByText("Loading data...")).not.toBeInTheDocument();
     });
 
-    const mapElement = screen.getByTestId("mapbox-map");
+    fireEvent.click(screen.getByTestId("mapbox-map"));
 
-    // Simulate clicking on empty area
-    fireEvent.click(mapElement, {
-      features: [],
-      lngLat: {
-        lng: -122.4194,
-        lat: 37.7749,
-      },
-    });
-
-    // Should not call getServiceRequestById
-    expect(
-      require("@/lib/actions/service-requests").getServiceRequestById
-    ).not.toHaveBeenCalled();
+    expect(mockedGetServiceRequestById).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("selected-request")).not.toBeInTheDocument();
   });
 
-  it("fetches data using predefined query when selected", async () => {
-    // Mock the context to have a selected query
-    vi.mock("@/contexts/MapContext", () => ({
-      useMapContext: vi.fn(() => ({
-        mode: "points",
-        selectedRequestId: null,
-        setSelectedRequestId: vi.fn(),
-        dateRange: { start: "2024-01-01", end: "2024-01-31" },
-        setDateRange: vi.fn(),
-        selectedQuery: "graffiti",
-        setSelectedQuery: vi.fn(),
-      })),
-      MapProvider: vi.fn(({ children }) => (
-        <div data-testid="map-provider">{children}</div>
-      )),
-    }));
+  it("surfaces a toast when request detail fetching fails", async () => {
+    mockedGetServiceRequestById.mockRejectedValue(new Error("boom"));
 
-    render(
-      <MapProvider>
-        <MapComponent {...defaultProps} />
-      </MapProvider>
-    );
-
-    await waitFor(() => {
-      expect(
-        require("@/lib/actions/service-requests")
-          .getServiceRequestsByPredefinedQuery
-      ).toHaveBeenCalledWith("graffiti", "2024-01-01", "2024-01-31");
-    });
-  });
-
-  it("handles service request detail fetching errors", async () => {
-    require("@/lib/actions/service-requests").getServiceRequestById.mockRejectedValue(
-      new Error("Failed to fetch details")
-    );
-
-    const { toast } = await import("sonner");
-
-    render(
-      <MapProvider>
-        <MapComponent {...defaultProps} />
-      </MapProvider>
-    );
+    renderMap();
 
     await waitFor(() => {
       expect(screen.queryByText("Loading data...")).not.toBeInTheDocument();
     });
 
-    const mapElement = screen.getByTestId("mapbox-map");
-
-    fireEvent.click(mapElement, {
-      features: [
-        {
-          properties: {
-            serviceRequestId: "1",
-          },
-        },
-      ],
-      lngLat: {
-        lng: -122.4194,
-        lat: 37.7749,
-      },
-    });
+    clickFeature(screen.getByTestId("mapbox-map"), "1");
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
-        "Failed to load request details. Please try again."
+        "Failed to load request details. Please try again.",
       );
     });
   });

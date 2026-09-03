@@ -27,13 +27,13 @@ describe("ModeToggle", () => {
     render(
       <MapProvider>
         <ModeToggle />
-      </MapProvider>
+      </MapProvider>,
     );
 
     expect(screen.getByTestId("mode-toggle-buttons")).toBeInTheDocument();
     expect(screen.getByRole("button")).toHaveAttribute(
       "aria-label",
-      "Toggle map mode"
+      "Toggle map mode",
     );
   });
 
@@ -41,7 +41,7 @@ describe("ModeToggle", () => {
     render(
       <MapProvider>
         <ModeToggle />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const button = screen.getAllByRole("button")[0];
@@ -53,23 +53,11 @@ describe("ModeToggle", () => {
     expect(screen.getByText("Hexabin")).toBeInTheDocument();
   });
 
-  it.skip("closes dropdown when clicking outside", () => {
-    // Test skipped due to test environment issues
-  });
-
-  it.skip("changes mode when radio button is selected", () => {
-    // Test skipped due to test environment issues
-  });
-
-  it.skip("shows correct radio button as checked based on current mode", () => {
-    // Test skipped due to test environment issues
-  });
-
   it("has correct CSS classes", () => {
     render(
       <MapProvider>
         <ModeToggle />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const container = screen.getAllByTestId("mode-toggle-buttons")[0];
@@ -77,9 +65,5 @@ describe("ModeToggle", () => {
 
     const button = screen.getAllByRole("button")[0];
     expect(button).toHaveClass("p-2", "rounded-lg");
-  });
-
-  it.skip("handles keyboard navigation", () => {
-    // Test skipped due to test environment issues
   });
 });

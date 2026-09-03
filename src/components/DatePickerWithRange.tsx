@@ -1,6 +1,6 @@
 import * as React from "react";
 import { CalendarIcon } from "@heroicons/react/24/outline";
-import { format, subDays, subYears } from "date-fns";
+import { format, parseISO, subDays, subYears } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,7 @@ const presets = [
 const isDateRangeMatchingPreset = (
   currentFrom: Date,
   currentTo: Date,
-  preset: (typeof presets)[number]
+  preset: (typeof presets)[number],
 ) => {
   const presetRange = preset.getRange();
   return (
@@ -89,9 +89,11 @@ const isDateRangeMatchingPreset = (
 
 export default function DatePickerWithRange() {
   const { dateRange, setDateRange } = useMapContext();
+  // parseISO reads "yyyy-MM-dd" as local midnight; new Date() would read it
+  // as UTC midnight, which is the previous evening in San Francisco.
   const [date, setDate] = React.useState<DateRange | undefined>({
-    from: new Date(dateRange.start),
-    to: new Date(dateRange.end),
+    from: parseISO(dateRange.start),
+    to: parseISO(dateRange.end),
   });
   const [open, setOpen] = React.useState(false);
 
@@ -113,7 +115,7 @@ export default function DatePickerWithRange() {
             variant="outline"
             className={cn(
               "justify-start text-left font-normal min-w-[240px] w-full",
-              !date && "text-muted-foreground"
+              !date && "text-muted-foreground",
             )}
           >
             <CalendarIcon className="mr-0.5 -ml-1.5 h-4 w-4" />
@@ -148,7 +150,7 @@ export default function DatePickerWithRange() {
                   date?.from &&
                     date?.to &&
                     isDateRangeMatchingPreset(date.from, date.to, preset) &&
-                    "bg-primary text-primary-foreground hover:bg-primary/90"
+                    "bg-primary text-primary-foreground hover:bg-primary/90",
                 )}
                 onClick={() => handlePresetClick(preset)}
               >
@@ -157,7 +159,7 @@ export default function DatePickerWithRange() {
             ))}
           </div>
           <Calendar
-            initialFocus
+            autoFocus
             mode="range"
             defaultMonth={date?.from}
             selected={date}

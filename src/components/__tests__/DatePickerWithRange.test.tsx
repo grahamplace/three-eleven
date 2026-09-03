@@ -20,6 +20,10 @@ vi.mock("next/navigation", () => ({
 
 // Mock date-fns
 vi.mock("date-fns", () => ({
+  parseISO: vi.fn((s: string) => {
+    const [y, m, d] = s.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }),
   format: vi.fn((date, formatStr) => {
     if (formatStr === "yyyy-MM-dd") {
       return date.toISOString().split("T")[0];
@@ -55,7 +59,7 @@ vi.mock("@/components/ui/button", () => ({
 }));
 
 vi.mock("@/components/ui/calendar", () => ({
-  Calendar: vi.fn(({ onSelect, selected, mode, numberOfMonths }) => (
+  Calendar: vi.fn(({ selected, mode, numberOfMonths }) => (
     <div data-testid="calendar" data-mode={mode} data-months={numberOfMonths}>
       <button>Select Date</button>
       {selected && (
@@ -73,7 +77,7 @@ vi.mock("@/components/ui/calendar", () => ({
 }));
 
 vi.mock("@/components/ui/popover", () => ({
-  Popover: vi.fn(({ children, open, onOpenChange }) => (
+  Popover: vi.fn(({ children, open }) => (
     <div data-testid="popover" data-open={open}>
       {children}
     </div>
@@ -104,7 +108,7 @@ describe("DatePickerWithRange", () => {
     render(
       <MapProvider>
         <DatePickerWithRange />
-      </MapProvider>
+      </MapProvider>,
     );
 
     expect(screen.getByTestId("date-range-picker")).toBeInTheDocument();
@@ -117,7 +121,7 @@ describe("DatePickerWithRange", () => {
     render(
       <MapProvider>
         <DatePickerWithRange />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const calendars = screen.getAllByTestId("calendar");
@@ -129,7 +133,7 @@ describe("DatePickerWithRange", () => {
     render(
       <MapProvider>
         <DatePickerWithRange />
-      </MapProvider>
+      </MapProvider>,
     );
 
     // Should show preset buttons
@@ -144,7 +148,7 @@ describe("DatePickerWithRange", () => {
     render(
       <MapProvider>
         <DatePickerWithRange />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const buttons = screen.getAllByRole("button");
@@ -155,7 +159,7 @@ describe("DatePickerWithRange", () => {
     render(
       <MapProvider>
         <DatePickerWithRange />
-      </MapProvider>
+      </MapProvider>,
     );
 
     const buttons = screen.getAllByRole("button");

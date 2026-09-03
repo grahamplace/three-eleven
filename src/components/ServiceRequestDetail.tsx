@@ -2,7 +2,7 @@ import React from "react";
 import Image from "next/image";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "./ui/drawer";
 import { ServiceRequest } from "@/entities";
-import { ServiceRequestDTOThin } from "@/entities/data-transfer";
+import { formatSfDateTime } from "@/lib/time";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ModeToggle } from "@/components/ModeToggle";
@@ -11,27 +11,26 @@ import DateRangePickerWithRange from "@/components/DatePickerWithRange";
 import { RecenterButton } from "@/components/RecenterButton";
 import { LocationButton } from "./LocationButton";
 import { QueryFilterSelector } from "./QueryFilterSelector";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 interface ServiceRequestDrawerProps {
-  selectedRequest: ServiceRequestDTOThin | null;
+  selectedRequestId: string | null;
   selectedRequestData: ServiceRequest | null;
 }
 
 export default function ServiceRequestDetail({
-  selectedRequest,
+  selectedRequestId,
   selectedRequestData,
 }: ServiceRequestDrawerProps) {
   const { setSelectedRequestId } = useMapContext();
-
-  const handleUnsetSelectedRequest = () => {
-    setSelectedRequestId(null);
-    setIsImageOverlayOpen(false);
-  };
-
-  const isOpen = Boolean(selectedRequest);
+  const isOpen = Boolean(selectedRequestId);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [isImageOverlayOpen, setIsImageOverlayOpen] = useState(false);
+
+  const handleUnsetSelectedRequest = useCallback(() => {
+    setSelectedRequestId(null);
+    setIsImageOverlayOpen(false);
+  }, [setSelectedRequestId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -46,7 +45,7 @@ export default function ServiceRequestDetail({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isImageOverlayOpen, isOpen]);
+  }, [isImageOverlayOpen, isOpen, handleUnsetSelectedRequest]);
 
   const content = (
     <>
@@ -122,7 +121,7 @@ export default function ServiceRequestDetail({
                         <span>
                           {selectedRequestData.service_subtype.replace(
                             /_/g,
-                            " "
+                            " ",
                           )}
                         </span>
                       </div>
@@ -135,7 +134,7 @@ export default function ServiceRequestDetail({
                         <span>
                           {selectedRequestData.service_details.replace(
                             /_/g,
-                            " "
+                            " ",
                           )}
                         </span>
                       </div>
@@ -206,9 +205,9 @@ export default function ServiceRequestDetail({
                         Requested
                       </span>
                       <span>
-                        {new Date(
-                          selectedRequestData.requested_datetime
-                        ).toLocaleString()}
+                        {formatSfDateTime(
+                          selectedRequestData.requested_datetime,
+                        )}
                       </span>
                     </div>
                     {selectedRequestData.updated_datetime && (
@@ -217,9 +216,9 @@ export default function ServiceRequestDetail({
                           Last Updated
                         </span>
                         <span>
-                          {new Date(
-                            selectedRequestData.updated_datetime
-                          ).toLocaleString()}
+                          {formatSfDateTime(
+                            selectedRequestData.updated_datetime,
+                          )}
                         </span>
                       </div>
                     )}
@@ -229,9 +228,7 @@ export default function ServiceRequestDetail({
                           Closed
                         </span>
                         <span>
-                          {new Date(
-                            selectedRequestData.closed_date
-                          ).toLocaleString()}
+                          {formatSfDateTime(selectedRequestData.closed_date)}
                         </span>
                       </div>
                     )}
@@ -282,9 +279,7 @@ export default function ServiceRequestDetail({
       {isImageOverlayOpen && selectedRequestData?.media_url && (
         <div
           className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4"
-          onClick={(e) => {
-            setIsImageOverlayOpen(false);
-          }}
+          onClick={() => setIsImageOverlayOpen(false)}
         >
           <div className="relative w-full h-full max-w-5xl max-h-[90vh]">
             <Image
@@ -298,9 +293,7 @@ export default function ServiceRequestDetail({
           </div>
           <button
             className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
-            onClick={(e) => {
-              setIsImageOverlayOpen(false);
-            }}
+            onClick={() => setIsImageOverlayOpen(false)}
             aria-label="Close image overlay"
           >
             <svg
@@ -353,7 +346,7 @@ export default function ServiceRequestDetail({
           {isOpen && (
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
-                {selectedRequest && content}
+                {isOpen && content}
               </div>
             </div>
           )}
@@ -373,7 +366,7 @@ export default function ServiceRequestDetail({
               </DrawerHeader>
             </VisuallyHidden>
             <div className="overflow-y-auto h-full pb-8">
-              {selectedRequest && content}
+              {isOpen && content}
             </div>
           </DrawerContent>
         </Drawer>

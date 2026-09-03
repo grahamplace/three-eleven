@@ -71,16 +71,6 @@ describe("ThemeToggle", () => {
 
     expect(mockSetTheme).toHaveBeenCalledWith("light");
   });
-
-  // These tests are skipped due to test environment issues with multiple component instances
-  it.skip("calls setTheme with dark when current theme is light", () => {
-    // Test skipped
-  });
-
-  it.skip("handles undefined theme gracefully", () => {
-    // Test skipped
-  });
-
   it("has correct accessibility attributes", () => {
     mockUseTheme.mockReturnValue({
       theme: "light",
