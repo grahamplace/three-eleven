@@ -23,6 +23,7 @@ import {
 import { useMapContext } from "@/contexts/MapContext";
 import { Badge } from "./ui/badge";
 import { toast } from "sonner";
+import { formatSfDate } from "@/lib/time";
 import type {
   HexbinsResponse,
   PointsResponse,
@@ -67,7 +68,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<PointTuple | null>(
-    null
+    null,
   );
   const [mapBounds, setMapBounds] = useState<MapBounds>({
     north: 37.811749,
@@ -105,13 +106,13 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
           params.set("res", String(resolution));
           const data = await fetchJson<HexbinsResponse>(
             `/api/hexbins?${params}`,
-            controller.signal
+            controller.signal,
           );
           setHexCounts(data.cells);
         } else {
           const data = await fetchJson<PointsResponse>(
             `/api/points?${params}`,
-            controller.signal
+            controller.signal,
           );
           setPoints(data.points);
         }
@@ -156,7 +157,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
         geometry: { type: "Point", coordinates: [lng, lat] },
       })),
     }),
-    [points]
+    [points],
   );
 
   const handleMapMove = useCallback(() => {
@@ -412,7 +413,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
         />
         <div className="fixed right-0 bottom-0 p-2">
           <Badge variant="default">
-            Data updated: {dataAsOf.toLocaleDateString()}
+            Data updated: {formatSfDate(dataAsOf)}
           </Badge>
         </div>
       </div>

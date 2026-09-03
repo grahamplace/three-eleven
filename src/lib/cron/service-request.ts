@@ -6,6 +6,7 @@ import {
 import { ServiceRequest } from "@/entities";
 import { envobj, string } from "envobj";
 import sfdataClient, { ResourceId } from "@/lib/sfdata";
+import { fromSfWallClock, toSfWallClock } from "@/lib/time";
 
 const env = envobj(
   {
@@ -14,7 +15,7 @@ const env = envobj(
   process.env as Record<string, string | undefined>,
   {
     ENV: "development",
-  }
+  },
 );
 
 // 50k is maximum allowed by SODA 2.1
@@ -25,7 +26,8 @@ const DELAY_MS = 500;
 // It takes ~1.5s per batch. 20 batches is ~30s. Vercel free plan has max timeout limit of 60s. In dev, can run more batches per run.
 const MAX_BATCHES_PER_RUN = env.ENV === "development" ? 1000 : 20;
 
-// Type for raw API response from SF 311 data
+// Type for raw API response from SF 311 data. All datetimes are Socrata
+// floating timestamps: Pacific wall-clock strings with no zone.
 type RawServiceRequestData = {
   service_request_id: string;
   requested_datetime: string;
@@ -53,9 +55,11 @@ type RawServiceRequestData = {
 
 async function fetchDataChunk(
   offset: number,
-  latestUpdatedDatetime: Date
+  latestUpdatedDatetime: Date,
 ): Promise<RawServiceRequestData[]> {
-  const formattedDate = latestUpdatedDatetime.toISOString().slice(0, 23);
+  // SODA compares floating timestamps as Pacific wall-clock, so format the
+  // watermark the same way rather than as UTC.
+  const formattedDate = toSfWallClock(latestUpdatedDatetime);
 
   const result = await sfdataClient
     .query(ResourceId.SERVICE_REQUESTS)
@@ -78,7 +82,7 @@ export async function ingestServiceRequests() {
   try {
     while (batchesProcessed < MAX_BATCHES_PER_RUN) {
       console.info(
-        `Fetching batch ${batchesProcessed + 1} with offset ${offset} and latestUpdatedDatetime ${latestUpdatedDatetime}`
+        `Fetching batch ${batchesProcessed + 1} with offset ${offset} and latestUpdatedDatetime ${latestUpdatedDatetime}`,
       );
       const rawData = await fetchDataChunk(offset, latestUpdatedDatetime);
 
@@ -116,14 +120,14 @@ export async function ingestServiceRequests() {
 }
 
 export function transformData(
-  rawData: RawServiceRequestData[]
+  rawData: RawServiceRequestData[],
 ): Omit<ServiceRequest, "created_at" | "updated_at">[] {
   return rawData.map((item) => ({
     service_request_id: item.service_request_id,
-    requested_datetime: new Date(item.requested_datetime),
-    closed_date: item.closed_date ? new Date(item.closed_date) : null,
+    requested_datetime: fromSfWallClock(item.requested_datetime),
+    closed_date: item.closed_date ? fromSfWallClock(item.closed_date) : null,
     updated_datetime: item.updated_datetime
-      ? new Date(item.updated_datetime)
+      ? fromSfWallClock(item.updated_datetime)
       : null,
     status_description: item.status_description || null,
     status_notes: item.status_notes || null,
@@ -141,8 +145,10 @@ export function transformData(
     analysis_neighborhood: item.analysis_neighborhood || null,
     police_district: item.police_district || null,
     source: item.source || null,
-    data_as_of: item.data_as_of ? new Date(item.data_as_of) : null,
-    data_loaded_at: item.data_loaded_at ? new Date(item.data_loaded_at) : null,
+    data_as_of: item.data_as_of ? fromSfWallClock(item.data_as_of) : null,
+    data_loaded_at: item.data_loaded_at
+      ? fromSfWallClock(item.data_loaded_at)
+      : null,
     lat: item.lat ? parseFloat(item.lat) : null,
     long: item.long ? parseFloat(item.long) : null,
     media_url: item.media_url?.url || null,

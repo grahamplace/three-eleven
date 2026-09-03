@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { fromSfWallClock } from "@/lib/time";
 
 // Mock the database connection to prevent process.exit
 vi.mock("@/lib/db", () => ({
@@ -29,33 +30,43 @@ describe("cron", () => {
     const mod = await import("@/lib/cron/service-request");
     transformData = mod.transformData;
   });
+  const mockRawData = [
+    {
+      service_request_id: "test-1",
+      requested_datetime: "2024-01-15T10:30:00.000",
+      closed_date: null,
+      updated_datetime: "2024-01-15T10:30:00.000",
+      status_description: "Open",
+      status_notes: "Test request",
+      agency_responsible: "DPW",
+      service_name: "Graffiti",
+      service_subtype: "Public Property",
+      service_details: "Test graffiti",
+      address: "123 Test St",
+      street: "Test St",
+      supervisor_district: "6",
+      neighborhoods_sffind_boundaries: "Test Neighborhood",
+      analysis_neighborhood: "Test District",
+      police_district: "Central",
+      source: "Test",
+      data_as_of: "2024-01-15T10:30:00.000",
+      data_loaded_at: "2024-01-15T10:30:00.000",
+      lat: "37.7749",
+      long: "-122.4194",
+      media_url: null,
+    },
+  ];
+
   describe("transformData", () => {
-    const mockRawData = [
-      {
-        service_request_id: "test-1",
-        requested_datetime: "2024-01-15T10:30:00.000",
-        closed_date: null,
-        updated_datetime: "2024-01-15T10:30:00.000",
-        status_description: "Open",
-        status_notes: "Test request",
-        agency_responsible: "DPW",
-        service_name: "Graffiti",
-        service_subtype: "Public Property",
-        service_details: "Test graffiti",
-        address: "123 Test St",
-        street: "Test St",
-        supervisor_district: "6",
-        neighborhoods_sffind_boundaries: "Test Neighborhood",
-        analysis_neighborhood: "Test District",
-        police_district: "Central",
-        source: "Test",
-        data_as_of: "2024-01-15T10:30:00.000",
-        data_loaded_at: "2024-01-15T10:30:00.000",
-        lat: "37.7749",
-        long: "-122.4194",
-        media_url: null,
-      },
-    ];
+    it("interprets SODA floating timestamps as Pacific time, not server-local", () => {
+      const result = transformData([
+        { ...mockRawData[0], requested_datetime: "2024-07-04T12:00:00.000" },
+      ]);
+      // Noon PDT is 19:00 UTC.
+      expect(result[0].requested_datetime.toISOString()).toBe(
+        "2024-07-04T19:00:00.000Z",
+      );
+    });
 
     it("transforms raw data correctly", () => {
       const result = transformData(mockRawData);
@@ -63,9 +74,9 @@ describe("cron", () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
         service_request_id: "test-1",
-        requested_datetime: new Date("2024-01-15T10:30:00.000"),
+        requested_datetime: fromSfWallClock("2024-01-15T10:30:00.000"),
         closed_date: null,
-        updated_datetime: new Date("2024-01-15T10:30:00.000"),
+        updated_datetime: fromSfWallClock("2024-01-15T10:30:00.000"),
         status_description: "Open",
         status_notes: "Test request",
         agency_responsible: "DPW",
@@ -79,8 +90,8 @@ describe("cron", () => {
         analysis_neighborhood: "Test District",
         police_district: "Central",
         source: "Test",
-        data_as_of: new Date("2024-01-15T10:30:00.000"),
-        data_loaded_at: new Date("2024-01-15T10:30:00.000"),
+        data_as_of: fromSfWallClock("2024-01-15T10:30:00.000"),
+        data_loaded_at: fromSfWallClock("2024-01-15T10:30:00.000"),
         lat: 37.7749,
         long: -122.4194,
         media_url: null,
@@ -119,7 +130,7 @@ describe("cron", () => {
 
       expect(result[0]).toEqual({
         service_request_id: "test-1",
-        requested_datetime: new Date("2024-01-15T10:30:00.000"),
+        requested_datetime: fromSfWallClock("2024-01-15T10:30:00.000"),
         closed_date: null,
         updated_datetime: null,
         status_description: null,

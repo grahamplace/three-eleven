@@ -92,6 +92,27 @@ describe("store/service-request", () => {
       expect(replaceQueryTagsForMany).toHaveBeenCalledWith(input, tx);
     });
 
+    it("writes datetimes as Pacific wall-clock strings, not server-local Dates", async () => {
+      vi.mocked(queries.createServiceRequests.run).mockResolvedValue([]);
+
+      await createMany([
+        {
+          ...row,
+          requested_datetime: new Date("2024-07-04T19:00:00.000Z"),
+          closed_date: new Date("2024-01-15T18:30:00.000Z"),
+          updated_datetime: null,
+        },
+      ] as any);
+
+      const { requests } = vi.mocked(queries.createServiceRequests.run).mock
+        .calls[0][0] as any;
+      expect(requests[0]).toMatchObject({
+        requested_datetime: "2024-07-04T12:00:00.000",
+        closed_date: "2024-01-15T10:30:00.000",
+        updated_datetime: null,
+      });
+    });
+
     it("lets a tag failure abort the transaction", async () => {
       vi.mocked(queries.createServiceRequests.run).mockResolvedValue([]);
       const boom = new Error("tags failed");

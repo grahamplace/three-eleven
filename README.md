@@ -37,6 +37,14 @@ backfill existing rows once:
 npm run backfill-h3
 ```
 
+#### Timestamps
+
+SF 311 publishes datetimes as Pacific wall-clock values with no zone (Socrata "floating"
+timestamps). They are stored as-is in `timestamp` columns so `DATE(requested_datetime)` is
+the San Francisco calendar day. Every conversion between those strings and JavaScript
+`Date`s goes through `src/lib/time.ts`, and the UI always renders San Francisco time, so
+behaviour is the same whether the code runs on Vercel (UTC) or a laptop.
+
 #### Queries
 
 We use [pgtyped](https://github.com/adelsz/pgtyped) to generate TypeScript types from our SQL queries:

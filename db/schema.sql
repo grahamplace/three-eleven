@@ -89,8 +89,8 @@ CREATE TABLE public.service_requests (
     long double precision,
     latlon public.geometry(Point,4326) GENERATED ALWAYS AS (public.st_setsrid(public.st_makepoint(long, lat), 4326)) STORED,
     media_url text,
-    created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now(),
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
     h3_r7 text,
     h3_r8 text,
     h3_r9 text,
@@ -181,4 +181,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250201194801'),
     ('20250221042408'),
     ('20250303023331'),
-    ('20260903164715');
+    ('20260903164715'),
+    ('20260903165706');

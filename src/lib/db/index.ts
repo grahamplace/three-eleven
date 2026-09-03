@@ -1,7 +1,14 @@
 import pg from "pg";
 import { envobj, string } from "envobj";
+import { fromSfWallClock } from "@/lib/time";
 
 const { Pool } = pg;
+
+// `timestamp without time zone` columns hold SF 311's Pacific wall-clock
+// values (see src/lib/time.ts). node-postgres would otherwise interpret them
+// in the process's local zone, which is UTC on Vercel and Pacific on a laptop,
+// so the same row would read back as two different instants.
+pg.types.setTypeParser(pg.types.builtins.TIMESTAMP, fromSfWallClock);
 
 export const env = envobj(
   {
@@ -12,7 +19,7 @@ export const env = envobj(
   {
     ENV: "development",
     DATABASE_URL: "postgres://@localhost:5432/three_eleven?sslmode=disable",
-  }
+  },
 );
 
 type QueryParams = readonly unknown[];
@@ -25,7 +32,7 @@ type QueryParams = readonly unknown[];
 export type DbConnection = {
   query: (
     query: string,
-    bindings?: QueryParams
+    bindings?: QueryParams,
   ) => Promise<{ rows: any[]; rowCount: number }>;
 };
 
@@ -64,7 +71,7 @@ export const db: DbConnection = {
  * if it throws, and always returns the client to the pool.
  */
 export async function withTransaction<T>(
-  fn: (tx: DbConnection) => Promise<T>
+  fn: (tx: DbConnection) => Promise<T>,
 ): Promise<T> {
   const client = await getPool().connect();
   try {

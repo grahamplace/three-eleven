@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "./ui/drawer";
 import { ServiceRequest } from "@/entities";
 import type { PointTuple } from "@/lib/api/types";
+import { formatSfDateTime } from "@/lib/time";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ModeToggle } from "@/components/ModeToggle";
@@ -206,9 +207,9 @@ export default function ServiceRequestDetail({
                         Requested
                       </span>
                       <span>
-                        {new Date(
+                        {formatSfDateTime(
                           selectedRequestData.requested_datetime,
-                        ).toLocaleString()}
+                        )}
                       </span>
                     </div>
                     {selectedRequestData.updated_datetime && (
@@ -217,9 +218,9 @@ export default function ServiceRequestDetail({
                           Last Updated
                         </span>
                         <span>
-                          {new Date(
+                          {formatSfDateTime(
                             selectedRequestData.updated_datetime,
-                          ).toLocaleString()}
+                          )}
                         </span>
                       </div>
                     )}
@@ -229,9 +230,7 @@ export default function ServiceRequestDetail({
                           Closed
                         </span>
                         <span>
-                          {new Date(
-                            selectedRequestData.closed_date,
-                          ).toLocaleString()}
+                          {formatSfDateTime(selectedRequestData.closed_date)}
                         </span>
                       </div>
                     )}
