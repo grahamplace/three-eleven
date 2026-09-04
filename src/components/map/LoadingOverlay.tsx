@@ -8,3 +8,16 @@ export function LoadingOverlay() {
     </div>
   );
 }
+
+/**
+ * Shown while new data loads over a map that already has something on it, so
+ * a refetch never blanks the view the way LoadingOverlay does.
+ */
+export function RefreshingIndicator() {
+  return (
+    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-background/80 backdrop-blur-sm px-3 py-1 shadow-sm">
+      <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <span className="text-xs text-muted-foreground">Updating...</span>
+    </div>
+  );
+}

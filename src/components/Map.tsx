@@ -25,7 +25,7 @@ import ServiceRequestDetail from "./ServiceRequestDetail";
 import { Badge } from "./ui/badge";
 import { useMapData } from "./map/useMapData";
 import { centerOnPoint } from "./map/centerOnPoint";
-import { LoadingOverlay } from "./map/LoadingOverlay";
+import { LoadingOverlay, RefreshingIndicator } from "./map/LoadingOverlay";
 import {
   HEATMAP_PAINT,
   HEXAGON_FILL_PAINT,
@@ -75,12 +75,13 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
 
   const resolution = getResolutionFromZoom(zoom);
   const isHexabin = mode === "hexabin";
-  const { isLoading, points, hexCounts } = useMapData({
-    dateRange,
-    selectedQuery,
-    isHexabin,
-    resolution,
-  });
+  const { isLoading, isRefreshing, points, hexCounts, hexResolution } =
+    useMapData({
+      dateRange,
+      selectedQuery,
+      isHexabin,
+      resolution,
+    });
 
   // Selection lives in the URL (?id=), so deep links open the panel too.
   const selectedId = selectedRequestId;
@@ -118,10 +119,15 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     [points],
   );
 
+  // Drawn at the resolution the counts were fetched at, not the current zoom:
+  // while a resolution change is in flight the old hexes stay on screen rather
+  // than being redrawn as an empty grid.
   const hexagonData = useMemo(
     () =>
-      isHexabin ? hexCountsToFeatures(hexCounts, mapBounds, resolution) : null,
-    [hexCounts, mapBounds, resolution, isHexabin],
+      isHexabin && hexResolution
+        ? hexCountsToFeatures(hexCounts, mapBounds, hexResolution)
+        : null,
+    [hexCounts, mapBounds, hexResolution, isHexabin],
   );
 
   const handleMapMove = useCallback(() => {
@@ -169,45 +175,42 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
               onMoveEnd={handleMapMove}
               onLoad={handleMapMove}
             >
-              {isLoading ? (
-                <LoadingOverlay />
-              ) : (
-                <>
-                  {isHexabin && hexagonData && (
-                    <Source type="geojson" data={hexagonData}>
-                      <Layer
-                        id="hexagon-layer"
-                        type="fill"
-                        paint={HEXAGON_FILL_PAINT}
-                      />
-                      <Layer
-                        id="hexagon-outline"
-                        type="line"
-                        paint={hexagonOutlinePaint(theme)}
-                      />
-                    </Source>
-                  )}
+              {isLoading && <LoadingOverlay />}
+              {isRefreshing && <RefreshingIndicator />}
 
-                  {mode === "heatmap" && (
-                    <Source type="geojson" data={geojson}>
-                      <Layer
-                        id="heatmap-layer"
-                        type="heatmap"
-                        paint={HEATMAP_PAINT}
-                      />
-                    </Source>
-                  )}
+              {isHexabin && hexagonData && (
+                <Source type="geojson" data={hexagonData}>
+                  <Layer
+                    id="hexagon-layer"
+                    type="fill"
+                    paint={HEXAGON_FILL_PAINT}
+                  />
+                  <Layer
+                    id="hexagon-outline"
+                    type="line"
+                    paint={hexagonOutlinePaint(theme)}
+                  />
+                </Source>
+              )}
 
-                  {(mode === "points" || mode === "heatmap") && (
-                    <Source type="geojson" data={geojson}>
-                      <Layer
-                        id="point-layer"
-                        type="circle"
-                        paint={pointLayerPaint}
-                      />
-                    </Source>
-                  )}
-                </>
+              {mode === "heatmap" && (
+                <Source type="geojson" data={geojson}>
+                  <Layer
+                    id="heatmap-layer"
+                    type="heatmap"
+                    paint={HEATMAP_PAINT}
+                  />
+                </Source>
+              )}
+
+              {(mode === "points" || mode === "heatmap") && (
+                <Source type="geojson" data={geojson}>
+                  <Layer
+                    id="point-layer"
+                    type="circle"
+                    paint={pointLayerPaint}
+                  />
+                </Source>
               )}
             </Map>
           </div>

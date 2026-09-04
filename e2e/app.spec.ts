@@ -100,7 +100,11 @@ test.describe("map", () => {
     await page.goto("/");
     await loaded(page);
 
-    const hexbins = net.waitForApi("/api/hexbins");
+    const hexbins = net.waitForApi(
+      "/api/hexbins",
+      // Initial zoom 11.5 maps to H3 resolution 9; 8 and 10 are prefetched.
+      (u) => u.searchParams.get("res") === "9",
+    );
     await page.getByRole("button", { name: "Toggle map mode" }).click();
     // click, not check(): choosing a mode closes the menu, so the radio is
     // gone before check() could verify its state.
@@ -108,7 +112,6 @@ test.describe("map", () => {
     const req = new URL((await hexbins).url());
 
     await expect(page).toHaveURL(/[?&]mode=hexabin(&|$)/);
-    // Initial zoom 11.5 maps to H3 resolution 9.
     expect(req.searchParams.get("res")).toBe("9");
     expect(req.searchParams.get("start")).toMatch(DATE);
   });
@@ -143,15 +146,19 @@ test.describe("map", () => {
 
   test("URL state is applied on first load", async ({ page }) => {
     const net = await stubNetwork(page);
+    const firstFetch = net.waitForApi("/api/hexbins");
 
     await page.goto(
       "/?start=2024-03-01&end=2024-03-31&query=graffiti&mode=hexabin",
     );
+    const req = new URL((await firstFetch).url());
     await loaded(page);
 
-    // One request, already reflecting the URL: no default-then-refetch.
-    expect(net.apiRequests.map((u) => u.pathname)).toEqual(["/api/hexbins"]);
-    const req = net.apiRequests[0];
+    // Hexbins only, already reflecting the URL: no default-then-refetch.
+    // (Neighbouring resolutions are prefetched, so /api/hexbins repeats.)
+    expect(net.apiRequests.some((u) => u.pathname === "/api/points")).toBe(
+      false,
+    );
     expect(req.searchParams.get("start")).toBe("2024-03-01");
     expect(req.searchParams.get("end")).toBe("2024-03-31");
     expect(req.searchParams.get("query")).toBe("graffiti");
