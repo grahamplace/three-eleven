@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
-import { countByH3Cell, countByH3CellForQuery } from "@/store/service-request";
+import { countByH3Cell } from "@/store/service-request";
 import { parseDateRangeParams, parseResolution } from "@/lib/api/params";
 import {
   CACHE_CONTROL,
@@ -17,9 +17,7 @@ const getHexbins = unstable_cache(
     query: string | null,
     resolution: H3Resolution,
   ) => {
-    return query
-      ? countByH3CellForQuery(query, resolution, start, end)
-      : countByH3Cell(resolution, start, end);
+    return countByH3Cell(resolution, start, end, query ?? "");
   },
   ["hexbins"],
   { revalidate: 3600, tags: [SERVICE_REQUESTS_TAG] },

@@ -1,6 +1,7 @@
 import { inngest } from "@/inngest/client";
 import { db } from "@/lib/db";
 import { replaceQueryTagsForMany } from "@/store/service-request-query-tags";
+import { EVENTS as ROLLUP_EVENTS } from "./rebuild-h3-rollup";
 
 export const EVENTS = {
   PROCESS_BATCH: "query-tags.process-batch",
@@ -88,6 +89,13 @@ export const processBatchFunction = inngest.createFunction(
       await step.sendEvent("trigger-next-batch", {
         name: EVENTS.PROCESS_BATCH,
         data: { afterId: lastId, batchSize } satisfies ProcessBatchEvent,
+      });
+    } else {
+      // Retagging changes the per-query hexbin counts, which are precomputed
+      // (see rebuild-h3-rollup), so they have to be rebuilt behind it.
+      await step.sendEvent("trigger-rollup-rebuild", {
+        name: ROLLUP_EVENTS.REBUILD,
+        data: {},
       });
     }
 

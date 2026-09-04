@@ -6,7 +6,6 @@ import {
   findPoints,
   findPointsByQueryId,
   countByH3Cell,
-  countByH3CellForQuery,
 } from "@/store/service-request";
 
 // Pass-through: the cache wrapper is Next infrastructure, not what's under test.
@@ -18,7 +17,6 @@ vi.mock("@/store/service-request", () => ({
   findPoints: vi.fn(),
   findPointsByQueryId: vi.fn(),
   countByH3Cell: vi.fn(),
-  countByH3CellForQuery: vi.fn(),
 }));
 
 const req = (path: string) => new NextRequest(`http://localhost${path}`);
@@ -82,21 +80,26 @@ describe("GET /api/hexbins", () => {
       resolution: 9,
       cells: [["8928308280fffff", 12]],
     });
-    expect(countByH3Cell).toHaveBeenCalledWith(9, "2024-01-01", "2024-01-31");
+    expect(countByH3Cell).toHaveBeenCalledWith(
+      9,
+      "2024-01-01",
+      "2024-01-31",
+      "",
+    );
   });
 
-  it("routes a predefined query to the tag-based aggregate", async () => {
-    vi.mocked(countByH3CellForQuery).mockResolvedValue([]);
+  it("passes a predefined query through as its own rollup series", async () => {
+    vi.mocked(countByH3Cell).mockResolvedValue([]);
 
     await getHexbins(
       req("/api/hexbins?start=2024-01-01&end=2024-01-31&res=10&query=poop"),
     );
 
-    expect(countByH3CellForQuery).toHaveBeenCalledWith(
-      "poop",
+    expect(countByH3Cell).toHaveBeenCalledWith(
       10,
       "2024-01-01",
       "2024-01-31",
+      "poop",
     );
   });
 

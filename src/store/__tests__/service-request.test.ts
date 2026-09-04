@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createMany, find, findByQueryId } from "@/store/service-request";
+import {
+  countByH3Cell,
+  createMany,
+  find,
+  findByQueryId,
+  pruneH3Daily,
+  refreshH3DailyForDays,
+  rollupHorizonDay,
+} from "@/store/service-request";
 import { withTransaction } from "@/lib/db";
 import * as queries from "@/store/queries/service_request.queries";
 import * as tagQueries from "@/store/queries/service_request_query_tags.queries";
 import { replaceQueryTagsForMany } from "@/store/service-request-query-tags";
+import { formatDay } from "@/lib/time";
 
 const tx = { query: vi.fn() };
 
@@ -20,6 +29,13 @@ vi.mock("@/store/queries/service_request.queries", () => ({
   findServiceRequestByDateAndType: { run: vi.fn() },
   findAllServiceRequestsByDate: { run: vi.fn() },
   createServiceRequests: { run: vi.fn() },
+  countByH3Cell: { run: vi.fn() },
+  countByH3CellForQuery: { run: vi.fn() },
+  countH3DailyCells: { run: vi.fn() },
+  pruneH3DailyBefore: { run: vi.fn() },
+  deleteH3DailyForDays: { run: vi.fn() },
+  insertH3DailyForDays: { run: vi.fn() },
+  findDaysForRequests: { run: vi.fn(async () => []) },
 }));
 
 vi.mock("@/store/queries/service_request_query_tags.queries", () => ({
@@ -29,6 +45,9 @@ vi.mock("@/store/queries/service_request_query_tags.queries", () => ({
 vi.mock("@/store/service-request-query-tags", () => ({
   replaceQueryTagsForMany: vi.fn(async () => []),
 }));
+
+/** A day the rollup definitely covers. */
+const inHorizon = formatDay(new Date());
 
 const row = {
   service_request_id: "1",
@@ -119,6 +138,140 @@ describe("store/service-request", () => {
       vi.mocked(replaceQueryTagsForMany).mockRejectedValueOnce(boom);
 
       await expect(createMany([row] as any)).rejects.toBe(boom);
+    });
+  });
+
+  describe("hexbin rollup", () => {
+    it("recomputes the rollup for the days a batch touches, on the same transaction", async () => {
+      vi.mocked(queries.createServiceRequests.run).mockResolvedValue([]);
+      const today = new Date();
+      vi.mocked(queries.findDaysForRequests.run).mockResolvedValue([
+        { day: today },
+      ]);
+
+      await createMany([row] as any);
+
+      expect(queries.findDaysForRequests.run).toHaveBeenCalledWith(
+        { ids: ["1"] },
+        tx,
+      );
+      const days = [formatDay(today)];
+      expect(queries.deleteH3DailyForDays.run).toHaveBeenCalledWith(
+        { days },
+        tx,
+      );
+      expect(queries.insertH3DailyForDays.run).toHaveBeenCalledWith(
+        { days },
+        tx,
+      );
+    });
+
+    it("skips days that have already aged past the rollup horizon", async () => {
+      vi.mocked(queries.createServiceRequests.run).mockResolvedValue([]);
+      const today = new Date();
+      vi.mocked(queries.findDaysForRequests.run).mockResolvedValue([
+        { day: new Date("2009-06-15T00:00:00") },
+        { day: today },
+      ]);
+
+      await createMany([row] as any);
+
+      expect(queries.deleteH3DailyForDays.run).toHaveBeenCalledWith(
+        { days: [formatDay(today)] },
+        tx,
+      );
+    });
+
+    it("prunes the rollup back to the horizon", async () => {
+      await pruneH3Daily();
+
+      expect(queries.pruneH3DailyBefore.run).toHaveBeenCalledWith(
+        { day: rollupHorizonDay() },
+        expect.anything(),
+      );
+    });
+
+    it("clears a day before rewriting it, so a recount never doubles", async () => {
+      const order: string[] = [];
+      vi.mocked(queries.deleteH3DailyForDays.run).mockImplementation(
+        async () => {
+          order.push("delete");
+          return undefined as never;
+        },
+      );
+      vi.mocked(queries.insertH3DailyForDays.run).mockImplementation(
+        async () => {
+          order.push("insert");
+          return undefined as never;
+        },
+      );
+
+      await refreshH3DailyForDays(["2024-01-01"]);
+
+      expect(order).toEqual(["delete", "insert"]);
+    });
+
+    it("touches nothing when there are no days to recompute", async () => {
+      await refreshH3DailyForDays([]);
+
+      expect(queries.deleteH3DailyForDays.run).not.toHaveBeenCalled();
+      expect(queries.insertH3DailyForDays.run).not.toHaveBeenCalled();
+    });
+
+    it("reads unfiltered counts as the empty query series", async () => {
+      vi.mocked(queries.countH3DailyCells.run).mockResolvedValue([
+        { h3_cell: "8928308280fffff", count: 12 },
+        { h3_cell: null, count: 3 },
+      ] as any);
+
+      const result = await countByH3Cell(9, inHorizon, inHorizon);
+
+      expect(queries.countH3DailyCells.run).toHaveBeenCalledWith(
+        {
+          query_id: "",
+          resolution: 9,
+          date_start: inHorizon,
+          date_end: inHorizon,
+        },
+        expect.anything(),
+      );
+      // Rows without a cell are dropped rather than drawn at 0,0.
+      expect(result).toEqual([["8928308280fffff", 12]]);
+    });
+
+    it("reads a filtered map from that query's own series", async () => {
+      vi.mocked(queries.countH3DailyCells.run).mockResolvedValue([]);
+
+      await countByH3Cell(11, inHorizon, inHorizon, "graffiti");
+
+      expect(queries.countH3DailyCells.run).toHaveBeenCalledWith(
+        expect.objectContaining({ query_id: "graffiti", resolution: 11 }),
+        expect.anything(),
+      );
+    });
+
+    it("counts raw rows for a window that starts before the horizon", async () => {
+      vi.mocked(queries.countByH3Cell.run).mockResolvedValue([]);
+
+      await countByH3Cell(9, "2009-06-15", "2009-06-30");
+
+      expect(queries.countByH3Cell.run).toHaveBeenCalledWith(
+        { resolution: 9, date_start: "2009-06-15", date_end: "2009-06-30" },
+        expect.anything(),
+      );
+      expect(queries.countH3DailyCells.run).not.toHaveBeenCalled();
+    });
+
+    it("counts raw tagged rows for a filtered window before the horizon", async () => {
+      vi.mocked(queries.countByH3CellForQuery.run).mockResolvedValue([]);
+
+      await countByH3Cell(9, "2009-06-15", "2009-06-30", "graffiti");
+
+      expect(queries.countByH3CellForQuery.run).toHaveBeenCalledWith(
+        expect.objectContaining({ query_id: "graffiti" }),
+        expect.anything(),
+      );
+      expect(queries.countH3DailyCells.run).not.toHaveBeenCalled();
     });
   });
 

@@ -1,8 +1,11 @@
 import { describe, it, expect, afterEach } from "vitest";
 import {
+  dayChunksDesc,
+  formatDay,
   formatSfDate,
   formatSfDateTime,
   fromSfWallClock,
+  sfToday,
   toSfWallClock,
   toSfWallClockOrNull,
 } from "@/lib/time";
@@ -109,6 +112,61 @@ describe("lib/time", () => {
       expect(formatSfDateTime("2024-01-15T18:30:00.000Z")).toBe(
         "1/15/2024, 10:30:00 AM",
       );
+    });
+  });
+
+  describe("formatDay", () => {
+    it("reads back the calendar day node-postgres parsed, not a UTC shift", () => {
+      // node-postgres parses a `date` column to local midnight; formatting it
+      // through a timezone would land on the previous day west of UTC.
+      expect(formatDay(new Date(2024, 2, 15))).toBe("2024-03-15");
+      expect(formatDay(new Date(2024, 0, 1))).toBe("2024-01-01");
+      expect(formatDay(new Date(2024, 11, 31))).toBe("2024-12-31");
+    });
+  });
+
+  describe("sfToday", () => {
+    it("uses the San Francisco day, not the server's", () => {
+      // 03:00 UTC on the 2nd is still the 1st in San Francisco.
+      expect(sfToday(new Date("2024-07-02T03:00:00Z"))).toBe("2024-07-01");
+      expect(sfToday(new Date("2024-07-02T18:00:00Z"))).toBe("2024-07-02");
+    });
+  });
+
+  describe("dayChunksDesc", () => {
+    it("walks an inclusive range backwards in chunks", () => {
+      expect(dayChunksDesc("2024-03-01", "2024-03-05", 2)).toEqual([
+        ["2024-03-05", "2024-03-04"],
+        ["2024-03-03", "2024-03-02"],
+        ["2024-03-01"],
+      ]);
+    });
+
+    it("returns a single chunk when the range fits", () => {
+      expect(dayChunksDesc("2024-03-01", "2024-03-01", 30)).toEqual([
+        ["2024-03-01"],
+      ]);
+    });
+
+    it("crosses a DST boundary without dropping or repeating a day", () => {
+      // Pacific springs forward on 2024-03-10.
+      const days = dayChunksDesc("2024-03-08", "2024-03-12", 30).flat();
+
+      expect(days).toEqual([
+        "2024-03-12",
+        "2024-03-11",
+        "2024-03-10",
+        "2024-03-09",
+        "2024-03-08",
+      ]);
+    });
+
+    it("is empty when the range is inverted", () => {
+      expect(dayChunksDesc("2024-03-05", "2024-03-01", 30)).toEqual([]);
+    });
+
+    it("rejects a chunk size below one", () => {
+      expect(() => dayChunksDesc("2024-03-01", "2024-03-05", 0)).toThrow();
     });
   });
 });

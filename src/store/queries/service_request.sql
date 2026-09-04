@@ -33,6 +33,13 @@ SELECT sr.service_request_id, sr.lat, sr.long
    AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end
    AND sr.lat IS NOT NULL AND sr.long IS NOT NULL;
 
+/*
+  Hexbin counts straight from service_requests. Only used for windows that
+  reach back past the rollup horizon (see service_request_h3_daily): scanning
+  raw rows for a long window is what these cost, which is why recent windows
+  read the rollup instead.
+*/
+
 /* @name CountByH3Cell */
 SELECT h3_cell, COUNT(*)::int AS count
   FROM (
@@ -66,6 +73,79 @@ SELECT h3_cell, COUNT(*)::int AS count
   ) cells
  WHERE h3_cell IS NOT NULL
  GROUP BY h3_cell;
+
+/*
+  Hexbin counts read from the daily rollup (service_request_h3_daily), not
+  from service_requests: counting raw rows for a long window means scanning
+  the whole table for a 16-byte cell id. query_id is '' for the unfiltered
+  map, so one query serves both paths.
+*/
+
+/* @name CountH3DailyCells */
+SELECT cell AS h3_cell, SUM(count)::int AS count
+  FROM service_request_h3_daily
+ WHERE query_id = :query_id!
+   AND resolution = :resolution!
+   AND day BETWEEN :date_start! AND :date_end!
+ GROUP BY cell;
+
+/*
+  Rollup maintenance. Whole days are recomputed rather than incremented:
+  ingest re-upserts requests it has already seen, so adding to a count would
+  drift, and a request's tags can change under it.
+
+  Delete and insert are separate statements on purpose — a data-modifying CTE
+  would not see its own deletes and could trip the unique index.
+*/
+
+/* @name DeleteH3DailyForDays */
+DELETE FROM service_request_h3_daily WHERE day = ANY(:days!);
+
+/* @name InsertH3DailyForDays */
+INSERT INTO service_request_h3_daily (query_id, resolution, day, cell, count)
+SELECT '' AS query_id,
+       c.resolution,
+       DATE(sr.requested_datetime) AS day,
+       c.cell,
+       COUNT(*)::int AS count
+  FROM service_requests sr
+  CROSS JOIN LATERAL (VALUES
+         (7::smallint, sr.h3_r7),
+         (8::smallint, sr.h3_r8),
+         (9::smallint, sr.h3_r9),
+         (10::smallint, sr.h3_r10),
+         (11::smallint, sr.h3_r11)
+       ) AS c(resolution, cell)
+ WHERE DATE(sr.requested_datetime) = ANY(:days!)
+   AND c.cell IS NOT NULL
+ GROUP BY 1, 2, 3, 4
+UNION ALL
+SELECT qt.query_id,
+       c.resolution,
+       DATE(sr.requested_datetime) AS day,
+       c.cell,
+       COUNT(*)::int AS count
+  FROM service_requests sr
+  JOIN service_request_query_tags qt
+    ON qt.service_request_id = sr.service_request_id
+  CROSS JOIN LATERAL (VALUES
+         (7::smallint, sr.h3_r7),
+         (8::smallint, sr.h3_r8),
+         (9::smallint, sr.h3_r9),
+         (10::smallint, sr.h3_r10),
+         (11::smallint, sr.h3_r11)
+       ) AS c(resolution, cell)
+ WHERE DATE(sr.requested_datetime) = ANY(:days!)
+   AND c.cell IS NOT NULL
+ GROUP BY 1, 2, 3, 4;
+
+/* @name PruneH3DailyBefore */
+DELETE FROM service_request_h3_daily WHERE day < :day!;
+
+/* @name FindDaysForRequests */
+SELECT DISTINCT DATE(requested_datetime) AS day
+  FROM service_requests
+ WHERE service_request_id = ANY(:ids!);
 
 /* @name CreateServiceRequests
    @param requests -> ((
