@@ -7,13 +7,6 @@ import {
   type HexCount,
 } from "@/lib/h3";
 
-const SF_BOUNDS = {
-  north: 37.811749,
-  south: 37.708075,
-  east: -122.346582,
-  west: -122.513272,
-};
-
 const CITY_CENTER = { lat: 37.7749, lng: -122.4194 };
 
 describe("h3", () => {
@@ -56,66 +49,39 @@ describe("h3", () => {
   });
 
   describe("hexCountsToFeatures", () => {
-    it("places server-side counts on the matching visible hexes", () => {
+    it("returns one polygon per cell, carrying its count", () => {
       const cell = latLngToCell(CITY_CENTER.lat, CITY_CENTER.lng, 9);
       const counts: HexCount[] = [[cell, 42]];
 
-      const result = hexCountsToFeatures(counts, SF_BOUNDS, 9);
+      const result = hexCountsToFeatures(counts);
 
-      const hit = result.features.find((f) => f.properties?.hexId === cell);
+      expect(result.features).toHaveLength(1);
+      expect(result.features[0].properties).toEqual({ count: 42, hexId: cell });
+      // A closed hexagon ring: 6 corners plus the repeated first point.
+      expect(result.features[0].geometry.coordinates[0]).toHaveLength(7);
+    });
+
+    it("draws every cell the API returns, at any resolution", () => {
+      // The old seed-point grid missed most of the city at r10/r11, so counts
+      // outside it were silently dropped.
+      const cells: HexCount[] = [
+        latLngToCell(37.7079, -122.4762, 11), // south-west corner
+        latLngToCell(37.8102, -122.3673, 11), // north-east waterfront
+        latLngToCell(CITY_CENTER.lat, CITY_CENTER.lng, 11),
+      ].map((cell, i) => [cell, i + 1]);
+
+      const result = hexCountsToFeatures(cells);
+
+      expect(result.features.map((f) => f.properties.hexId)).toEqual(
+        cells.map(([cell]) => cell),
+      );
+    });
+
+    it("returns an empty collection when there are no counts", () => {
+      const result = hexCountsToFeatures([]);
+
       expect(result.type).toBe("FeatureCollection");
-      expect(hit?.properties?.count).toBe(42);
-    });
-
-    it("includes visible hexes with no requests as zero-count features", () => {
-      const result = hexCountsToFeatures([], SF_BOUNDS, 9);
-
-      expect(result.features.length).toBeGreaterThan(0);
-      expect(result.features.every((f) => f.properties?.count === 0)).toBe(
-        true,
-      );
-    });
-
-    it("ignores counts for cells outside the SF grid", () => {
-      const oakland = latLngToCell(37.8044, -122.2712, 9);
-
-      const result = hexCountsToFeatures([[oakland, 99]], SF_BOUNDS, 9);
-
-      expect(result.features.some((f) => f.properties?.hexId === oakland)).toBe(
-        false,
-      );
-    });
-
-    it("returns correct feature schema", () => {
-      const result = hexCountsToFeatures([], SF_BOUNDS, 9);
-
-      expect(result.features[0]).toHaveProperty("type", "Feature");
-      expect(result.features[0]).toHaveProperty("properties.count");
-      expect(result.features[0]).toHaveProperty("properties.hexId");
-      expect(result.features[0]).toHaveProperty("geometry.type", "Polygon");
-      expect(result.features[0]).toHaveProperty("geometry.coordinates");
-    });
-
-    it("produces more, smaller hexes at finer resolutions", () => {
-      const coarse = hexCountsToFeatures([], SF_BOUNDS, 7);
-      const fine = hexCountsToFeatures([], SF_BOUNDS, 9);
-
-      expect(fine.features.length).toBeGreaterThan(coarse.features.length);
-    });
-
-    it("only returns hexes that intersect the viewport", () => {
-      const tinyBounds = {
-        north: CITY_CENTER.lat + 0.001,
-        south: CITY_CENTER.lat - 0.001,
-        east: CITY_CENTER.lng + 0.001,
-        west: CITY_CENTER.lng - 0.001,
-      };
-
-      const all = hexCountsToFeatures([], SF_BOUNDS, 9);
-      const few = hexCountsToFeatures([], tinyBounds, 9);
-
-      expect(few.features.length).toBeGreaterThan(0);
-      expect(few.features.length).toBeLessThan(all.features.length / 10);
+      expect(result.features).toEqual([]);
     });
   });
 });

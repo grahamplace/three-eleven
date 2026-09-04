@@ -14,11 +14,7 @@ import { toast } from "sonner";
 import { getServiceRequestById } from "@/lib/actions/service-requests";
 import { ServiceRequest } from "@/entities";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import {
-  getResolutionFromZoom,
-  hexCountsToFeatures,
-  type MapBounds,
-} from "@/lib/h3";
+import { getResolutionFromZoom, hexCountsToFeatures } from "@/lib/h3";
 import { useMapContext } from "@/contexts/MapContext";
 import { formatSfDate } from "@/lib/time";
 import ServiceRequestDetail from "./ServiceRequestDetail";
@@ -32,13 +28,6 @@ import {
   hexagonOutlinePaint,
   pointPaint,
 } from "./map/layers";
-
-const SF_BOUNDS: MapBounds = {
-  north: 37.811749,
-  south: 37.708075,
-  east: -122.346582,
-  west: -122.513272,
-};
 
 const INITIAL_VIEW = { longitude: -122.44, latitude: 37.77, zoom: 11.5 };
 
@@ -68,12 +57,14 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     selectedQuery,
   } = useMapContext();
 
-  const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
-  const [mapBounds, setMapBounds] = useState<MapBounds>(SF_BOUNDS);
+  // Only the resolution is tracked, not the raw zoom: panning and zooming
+  // within a band then costs no render at all.
+  const [resolution, setResolution] = useState(() =>
+    getResolutionFromZoom(INITIAL_VIEW.zoom),
+  );
   const [selectedRequestData, setSelectedRequestData] =
     useState<ServiceRequest | null>(null);
 
-  const resolution = getResolutionFromZoom(zoom);
   const isHexabin = mode === "hexabin";
   const { isLoading, isRefreshing, points, hexCounts, hexResolution } =
     useMapData({
@@ -81,6 +72,7 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
       selectedQuery,
       isHexabin,
       resolution,
+      dataVersion: dataAsOf.toISOString(),
     });
 
   // Selection lives in the URL (?id=), so deep links open the panel too.
@@ -119,27 +111,16 @@ function MapContent({ token, dataAsOf }: { token: string; dataAsOf: Date }) {
     [points],
   );
 
-  // Drawn at the resolution the counts were fetched at, not the current zoom:
-  // while a resolution change is in flight the old hexes stay on screen rather
-  // than being redrawn as an empty grid.
+  // Keyed off the data, not the viewport, so panning never rebuilds it. While
+  // a resolution change is in flight the hexes already on screen stay put.
   const hexagonData = useMemo(
-    () =>
-      isHexabin && hexResolution
-        ? hexCountsToFeatures(hexCounts, mapBounds, hexResolution)
-        : null,
-    [hexCounts, mapBounds, hexResolution, isHexabin],
+    () => (isHexabin && hexResolution ? hexCountsToFeatures(hexCounts) : null),
+    [hexCounts, hexResolution, isHexabin],
   );
 
   const handleMapMove = useCallback(() => {
     if (!map) return;
-    const bounds = map.getBounds();
-    setMapBounds({
-      north: bounds?.getNorth() || 0,
-      south: bounds?.getSouth() || 0,
-      east: bounds?.getEast() || 0,
-      west: bounds?.getWest() || 0,
-    });
-    setZoom(map.getZoom());
+    setResolution(getResolutionFromZoom(map.getZoom()));
   }, [map]);
 
   const handleMapInteraction = (event: MapMouseEvent | MapTouchEvent) => {

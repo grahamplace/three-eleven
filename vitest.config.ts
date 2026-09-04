@@ -19,6 +19,7 @@ export default defineConfig({
       "src/app/**/*.test.ts",
       "src/store/**/*.test.ts",
       "src/inngest/**/*.test.ts",
+      "src/components/**/*.test.ts",
       "src/components/**/*.test.tsx",
       "src/contexts/**/*.test.tsx",
     ],
