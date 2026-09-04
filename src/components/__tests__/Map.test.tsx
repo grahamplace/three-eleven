@@ -9,6 +9,9 @@ import { toast } from "sonner";
 // Mutable search params so individual tests can seed URL state
 let searchParams = new URLSearchParams();
 
+// The zoom react-map-gl reports; `setZoom` moves it and fires onMoveEnd.
+let currentZoom = 11.5;
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -34,15 +37,19 @@ vi.mock("react-map-gl", async () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, []);
       return (
-        <div
-          data-testid="mapbox-map"
-          onClick={(e) => {
-            const detail = (e as unknown as { detail?: unknown }).detail;
-            onClick?.(detail ?? { features: [], lngLat: { lng: 0, lat: 0 } });
-          }}
-        >
-          {children}
-        </div>
+        <>
+          {/* Stands in for a pan/zoom gesture; see `setZoom` below. */}
+          <button data-testid="move-end" onClick={() => onMoveEnd?.()} />
+          <div
+            data-testid="mapbox-map"
+            onClick={(e) => {
+              const detail = (e as unknown as { detail?: unknown }).detail;
+              onClick?.(detail ?? { features: [], lngLat: { lng: 0, lat: 0 } });
+            }}
+          >
+            {children}
+          </div>
+        </>
       );
     }),
     Source: vi.fn(({ children }) => (
@@ -58,7 +65,7 @@ vi.mock("react-map-gl", async () => {
           getEast: vi.fn(() => -122.346582),
           getWest: vi.fn(() => -122.513272),
         })),
-        getZoom: vi.fn(() => 11.5),
+        getZoom: vi.fn(() => currentZoom),
         getContainer: vi.fn(() => ({ offsetWidth: 1200 })),
         project: vi.fn(() => ({ x: 600, y: 400 })),
         unproject: vi.fn(() => [-122.4194, 37.7749] as [number, number]),
@@ -132,6 +139,11 @@ const fetchedPaths = () =>
     return { path: url.pathname, params: url.searchParams };
   });
 
+const setZoom = (zoom: number) => {
+  currentZoom = zoom;
+  fireEvent.click(screen.getByTestId("move-end"));
+};
+
 const clickFeature = (el: HTMLElement, serviceRequestId: string) => {
   const event = new MouseEvent("click", { bubbles: true });
   Object.defineProperty(event, "detail", {
@@ -158,6 +170,7 @@ describe("MapComponent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
+    currentZoom = 11.5;
 
     // Answer each route with its own payload shape. The first render fetches
     // points before URL state hydrates, so a hexabin test still sees a points
@@ -248,20 +261,72 @@ describe("MapComponent", () => {
     expect(params.get("end")).toBe("2024-01-31");
   });
 
+  const hexbinResolutions = () =>
+    fetchedPaths()
+      .filter((f) => f.path === "/api/hexbins")
+      .map((f) => f.params.get("res"));
+
   it("requests server-side hexbin counts at the zoom's resolution in hexabin mode", async () => {
     searchParams = new URLSearchParams("mode=hexabin");
 
     renderMap();
 
-    await waitFor(() => {
-      expect(fetchedPaths().some((f) => f.path === "/api/hexbins")).toBe(true);
-    });
-    // Mode is hydrated from the URL after first render, so the most recent
-    // request is the one that reflects hexabin mode.
-    const last = fetchedPaths().at(-1)!;
-    expect(last.path).toBe("/api/hexbins");
     // Initial zoom is 11.5, which maps to resolution 9.
-    expect(last.params.get("res")).toBe("9");
+    await waitFor(() => {
+      expect(hexbinResolutions()).toContain("9");
+    });
+  });
+
+  it("prefetches the hexbin resolutions a zoom step away", async () => {
+    searchParams = new URLSearchParams("mode=hexabin");
+
+    renderMap();
+
+    await waitFor(() => {
+      expect(hexbinResolutions()).toEqual(
+        expect.arrayContaining(["9", "8", "10"]),
+      );
+    });
+  });
+
+  it("serves a prefetched resolution from cache instead of refetching", async () => {
+    searchParams = new URLSearchParams("mode=hexabin");
+
+    renderMap();
+
+    await waitFor(() => {
+      expect(hexbinResolutions()).toEqual(
+        expect.arrayContaining(["9", "8", "10"]),
+      );
+    });
+    const before = fetchMock.mock.calls.length;
+
+    // Zoom 13.5 maps to resolution 10, which is already warm; the only new
+    // requests are the prefetches around it (11), never a refetch of 10.
+    setZoom(13.5);
+
+    await waitFor(() => {
+      expect(hexbinResolutions()).toContain("11");
+    });
+    expect(hexbinResolutions().filter((r) => r === "10")).toHaveLength(1);
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(before + 1);
+  });
+
+  it("does not refetch points when zooming, only hexbins are per-resolution", async () => {
+    renderMap();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    // Crosses two resolution thresholds (9 -> 10 -> 11).
+    setZoom(13.5);
+    setZoom(15.5);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Loading data...")).not.toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("surfaces a toast when the API responds with an error", async () => {
