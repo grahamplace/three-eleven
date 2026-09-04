@@ -1,4 +1,5 @@
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { addDays, parseISO } from "date-fns";
 
 /**
  * Timestamp convention
@@ -50,6 +51,17 @@ export function toSfWallClockOrNull(
   return date == null ? null : toSfWallClock(date);
 }
 
+/**
+ * A Postgres `date` as "yyyy-MM-dd". node-postgres parses those into
+ * local-midnight Dates, so the calendar day is read back with the local
+ * getters: converting to a zone here would shift it a day.
+ */
+export function formatDay(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 /** "7/4/2024, 12:00:00 PM", always in San Francisco time. */
 export function formatSfDateTime(date: Date | string): string {
   return new Date(date).toLocaleString("en-US", { timeZone: SF_TIME_ZONE });
@@ -58,4 +70,40 @@ export function formatSfDateTime(date: Date | string): string {
 /** "7/4/2024", always in San Francisco time. */
 export function formatSfDate(date: Date | string): string {
   return new Date(date).toLocaleDateString("en-US", { timeZone: SF_TIME_ZONE });
+}
+
+/** Today's calendar day in San Francisco, as "yyyy-MM-dd". */
+export function sfToday(now: Date = new Date()): string {
+  return formatInTimeZone(now, SF_TIME_ZONE, "yyyy-MM-dd");
+}
+
+/**
+ * An inclusive day range split into chunks of at most `size` calendar days,
+ * newest first, as "yyyy-MM-dd" strings.
+ *
+ * Used to walk the hexbin rollup rebuild backwards, so the recent days the map
+ * opens on are correct first and each chunk is small enough for one
+ * serverless invocation.
+ */
+export function dayChunksDesc(
+  from: string,
+  to: string,
+  size: number,
+): string[][] {
+  if (size < 1) throw new Error(`Chunk size must be at least 1, got ${size}`);
+
+  const first = parseISO(from);
+  const chunks: string[][] = [];
+  let chunk: string[] = [];
+
+  for (let day = parseISO(to); day >= first; day = addDays(day, -1)) {
+    chunk.push(formatDay(day));
+    if (chunk.length === size) {
+      chunks.push(chunk);
+      chunk = [];
+    }
+  }
+  if (chunk.length > 0) chunks.push(chunk);
+
+  return chunks;
 }

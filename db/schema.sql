@@ -51,6 +51,19 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: service_request_h3_daily; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.service_request_h3_daily (
+    query_id text NOT NULL,
+    resolution smallint NOT NULL,
+    day date NOT NULL,
+    cell text NOT NULL,
+    count integer NOT NULL
+);
+
+
+--
 -- Name: service_request_query_tags; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -152,6 +165,20 @@ CREATE INDEX service_idx_v2 ON public.service_requests USING btree (date(request
 
 
 --
+-- Name: service_request_h3_daily_day_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX service_request_h3_daily_day_idx ON public.service_request_h3_daily USING btree (day);
+
+
+--
+-- Name: service_request_h3_daily_series_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX service_request_h3_daily_series_idx ON public.service_request_h3_daily USING btree (query_id, resolution, day, cell) INCLUDE (count);
+
+
+--
 -- Name: service_requests trigger_set_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -182,4 +209,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250221042408'),
     ('20250303023331'),
     ('20260903164715'),
-    ('20260903165706');
+    ('20260903165706'),
+    ('20260904120000');

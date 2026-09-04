@@ -3,6 +3,8 @@ import { PreparedQuery } from "@pgtyped/runtime";
 
 export type DateOrString = Date | string;
 
+export type DateOrStringArray = DateOrString[];
+
 export type stringArray = string[];
 
 /** 'GetLatestUpdatedDatetime' parameters type */
@@ -265,7 +267,7 @@ const findAllServiceRequestsByDateIR: any = {
  * ```
  * SELECT *
  *   FROM service_requests
- *  WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end
+ *  WHERE DATE(requested_datetime) BETWEEN :date_start AND :date_end  
  * ```
  */
 export const findAllServiceRequestsByDate = new PreparedQuery<
@@ -369,7 +371,7 @@ const findPointsByQueryIdIR: any = {
     },
   ],
   statement:
-    "SELECT sr.service_request_id, sr.lat, sr.long\n  FROM service_requests sr\n  JOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id\n WHERE qt.query_id = :query_id\n   AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end\n   AND sr.lat IS NOT NULL AND sr.long IS NOT NULL",
+    "SELECT sr.service_request_id, sr.lat, sr.long\n  FROM service_requests sr\n  JOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id\n WHERE qt.query_id = :query_id\n   AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end\n   AND sr.lat IS NOT NULL AND sr.long IS NOT NULL                                                                                                                                                                                                                                                                      ",
 };
 
 /**
@@ -380,7 +382,7 @@ const findPointsByQueryIdIR: any = {
  *   JOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id
  *  WHERE qt.query_id = :query_id
  *    AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end
- *    AND sr.lat IS NOT NULL AND sr.long IS NOT NULL
+ *    AND sr.lat IS NOT NULL AND sr.long IS NOT NULL  
  * ```
  */
 export const findPointsByQueryId = new PreparedQuery<
@@ -511,7 +513,7 @@ const countByH3CellForQueryIR: any = {
     },
   ],
   statement:
-    "SELECT h3_cell, COUNT(*)::int AS count\n  FROM (\n    SELECT CASE :resolution::int\n             WHEN 7 THEN sr.h3_r7\n             WHEN 8 THEN sr.h3_r8\n             WHEN 9 THEN sr.h3_r9\n             WHEN 10 THEN sr.h3_r10\n             ELSE sr.h3_r11\n           END AS h3_cell\n      FROM service_requests sr\n      JOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id\n     WHERE qt.query_id = :query_id\n       AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end\n  ) cells\n WHERE h3_cell IS NOT NULL\n GROUP BY h3_cell",
+    "SELECT h3_cell, COUNT(*)::int AS count\n  FROM (\n    SELECT CASE :resolution::int\n             WHEN 7 THEN sr.h3_r7\n             WHEN 8 THEN sr.h3_r8\n             WHEN 9 THEN sr.h3_r9\n             WHEN 10 THEN sr.h3_r10\n             ELSE sr.h3_r11\n           END AS h3_cell\n      FROM service_requests sr\n      JOIN service_request_query_tags qt ON sr.service_request_id = qt.service_request_id\n     WHERE qt.query_id = :query_id\n       AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end\n  ) cells\n WHERE h3_cell IS NOT NULL\n GROUP BY h3_cell                                                                                                                                                                                                                                                                              ",
 };
 
 /**
@@ -532,13 +534,282 @@ const countByH3CellForQueryIR: any = {
  *        AND DATE(sr.requested_datetime) BETWEEN :date_start AND :date_end
  *   ) cells
  *  WHERE h3_cell IS NOT NULL
- *  GROUP BY h3_cell
+ *  GROUP BY h3_cell  
  * ```
  */
 export const countByH3CellForQuery = new PreparedQuery<
   ICountByH3CellForQueryParams,
   ICountByH3CellForQueryResult
 >(countByH3CellForQueryIR);
+
+/** 'CountH3DailyCells' parameters type */
+export interface ICountH3DailyCellsParams {
+  date_end: DateOrString;
+  date_start: DateOrString;
+  query_id: string;
+  resolution: number;
+}
+
+/** 'CountH3DailyCells' return type */
+export interface ICountH3DailyCellsResult {
+  count: number | null;
+  h3_cell: string;
+}
+
+/** 'CountH3DailyCells' query type */
+export interface ICountH3DailyCellsQuery {
+  params: ICountH3DailyCellsParams;
+  result: ICountH3DailyCellsResult;
+}
+
+const countH3DailyCellsIR: any = {
+  usedParamSet: {
+    query_id: true,
+    resolution: true,
+    date_start: true,
+    date_end: true,
+  },
+  params: [
+    {
+      name: "query_id",
+      required: true,
+      transform: { type: "scalar" },
+      locs: [{ a: 99, b: 108 }],
+    },
+    {
+      name: "resolution",
+      required: true,
+      transform: { type: "scalar" },
+      locs: [{ a: 130, b: 141 }],
+    },
+    {
+      name: "date_start",
+      required: true,
+      transform: { type: "scalar" },
+      locs: [{ a: 162, b: 173 }],
+    },
+    {
+      name: "date_end",
+      required: true,
+      transform: { type: "scalar" },
+      locs: [{ a: 179, b: 188 }],
+    },
+  ],
+  statement:
+    "SELECT cell AS h3_cell, SUM(count)::int AS count\n  FROM service_request_h3_daily\n WHERE query_id = :query_id!\n   AND resolution = :resolution!\n   AND day BETWEEN :date_start! AND :date_end!\n GROUP BY cell                                                                                                                                                                                                                                                                                                                                                              ",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT cell AS h3_cell, SUM(count)::int AS count
+ *   FROM service_request_h3_daily
+ *  WHERE query_id = :query_id!
+ *    AND resolution = :resolution!
+ *    AND day BETWEEN :date_start! AND :date_end!
+ *  GROUP BY cell  
+ * ```
+ */
+export const countH3DailyCells = new PreparedQuery<
+  ICountH3DailyCellsParams,
+  ICountH3DailyCellsResult
+>(countH3DailyCellsIR);
+
+/** 'DeleteH3DailyForDays' parameters type */
+export interface IDeleteH3DailyForDaysParams {
+  days: DateOrStringArray;
+}
+
+/** 'DeleteH3DailyForDays' return type */
+export type IDeleteH3DailyForDaysResult = void;
+
+/** 'DeleteH3DailyForDays' query type */
+export interface IDeleteH3DailyForDaysQuery {
+  params: IDeleteH3DailyForDaysParams;
+  result: IDeleteH3DailyForDaysResult;
+}
+
+const deleteH3DailyForDaysIR: any = {
+  usedParamSet: { days: true },
+  params: [
+    {
+      name: "days",
+      required: true,
+      transform: { type: "scalar" },
+      locs: [{ a: 53, b: 58 }],
+    },
+  ],
+  statement: "DELETE FROM service_request_h3_daily WHERE day = ANY(:days!)",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * DELETE FROM service_request_h3_daily WHERE day = ANY(:days!)
+ * ```
+ */
+export const deleteH3DailyForDays = new PreparedQuery<
+  IDeleteH3DailyForDaysParams,
+  IDeleteH3DailyForDaysResult
+>(deleteH3DailyForDaysIR);
+
+/** 'InsertH3DailyForDays' parameters type */
+export interface IInsertH3DailyForDaysParams {
+  days: DateOrStringArray;
+}
+
+/** 'InsertH3DailyForDays' return type */
+export type IInsertH3DailyForDaysResult = void;
+
+/** 'InsertH3DailyForDays' query type */
+export interface IInsertH3DailyForDaysQuery {
+  params: IInsertH3DailyForDaysParams;
+  result: IInsertH3DailyForDaysResult;
+}
+
+const insertH3DailyForDaysIR: any = {
+  usedParamSet: { days: true },
+  params: [
+    {
+      name: "days",
+      required: true,
+      transform: { type: "scalar" },
+      locs: [
+        { a: 512, b: 517 },
+        { a: 1098, b: 1103 },
+      ],
+    },
+  ],
+  statement:
+    "INSERT INTO service_request_h3_daily (query_id, resolution, day, cell, count)\nSELECT '' AS query_id,\n       c.resolution,\n       DATE(sr.requested_datetime) AS day,\n       c.cell,\n       COUNT(*)::int AS count\n  FROM service_requests sr\n  CROSS JOIN LATERAL (VALUES\n         (7::smallint, sr.h3_r7),\n         (8::smallint, sr.h3_r8),\n         (9::smallint, sr.h3_r9),\n         (10::smallint, sr.h3_r10),\n         (11::smallint, sr.h3_r11)\n       ) AS c(resolution, cell)\n WHERE DATE(sr.requested_datetime) = ANY(:days!)\n   AND c.cell IS NOT NULL\n GROUP BY 1, 2, 3, 4\nUNION ALL\nSELECT qt.query_id,\n       c.resolution,\n       DATE(sr.requested_datetime) AS day,\n       c.cell,\n       COUNT(*)::int AS count\n  FROM service_requests sr\n  JOIN service_request_query_tags qt\n    ON qt.service_request_id = sr.service_request_id\n  CROSS JOIN LATERAL (VALUES\n         (7::smallint, sr.h3_r7),\n         (8::smallint, sr.h3_r8),\n         (9::smallint, sr.h3_r9),\n         (10::smallint, sr.h3_r10),\n         (11::smallint, sr.h3_r11)\n       ) AS c(resolution, cell)\n WHERE DATE(sr.requested_datetime) = ANY(:days!)\n   AND c.cell IS NOT NULL\n GROUP BY 1, 2, 3, 4",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * INSERT INTO service_request_h3_daily (query_id, resolution, day, cell, count)
+ * SELECT '' AS query_id,
+ *        c.resolution,
+ *        DATE(sr.requested_datetime) AS day,
+ *        c.cell,
+ *        COUNT(*)::int AS count
+ *   FROM service_requests sr
+ *   CROSS JOIN LATERAL (VALUES
+ *          (7::smallint, sr.h3_r7),
+ *          (8::smallint, sr.h3_r8),
+ *          (9::smallint, sr.h3_r9),
+ *          (10::smallint, sr.h3_r10),
+ *          (11::smallint, sr.h3_r11)
+ *        ) AS c(resolution, cell)
+ *  WHERE DATE(sr.requested_datetime) = ANY(:days!)
+ *    AND c.cell IS NOT NULL
+ *  GROUP BY 1, 2, 3, 4
+ * UNION ALL
+ * SELECT qt.query_id,
+ *        c.resolution,
+ *        DATE(sr.requested_datetime) AS day,
+ *        c.cell,
+ *        COUNT(*)::int AS count
+ *   FROM service_requests sr
+ *   JOIN service_request_query_tags qt
+ *     ON qt.service_request_id = sr.service_request_id
+ *   CROSS JOIN LATERAL (VALUES
+ *          (7::smallint, sr.h3_r7),
+ *          (8::smallint, sr.h3_r8),
+ *          (9::smallint, sr.h3_r9),
+ *          (10::smallint, sr.h3_r10),
+ *          (11::smallint, sr.h3_r11)
+ *        ) AS c(resolution, cell)
+ *  WHERE DATE(sr.requested_datetime) = ANY(:days!)
+ *    AND c.cell IS NOT NULL
+ *  GROUP BY 1, 2, 3, 4
+ * ```
+ */
+export const insertH3DailyForDays = new PreparedQuery<
+  IInsertH3DailyForDaysParams,
+  IInsertH3DailyForDaysResult
+>(insertH3DailyForDaysIR);
+
+/** 'PruneH3DailyBefore' parameters type */
+export interface IPruneH3DailyBeforeParams {
+  day: DateOrString;
+}
+
+/** 'PruneH3DailyBefore' return type */
+export type IPruneH3DailyBeforeResult = void;
+
+/** 'PruneH3DailyBefore' query type */
+export interface IPruneH3DailyBeforeQuery {
+  params: IPruneH3DailyBeforeParams;
+  result: IPruneH3DailyBeforeResult;
+}
+
+const pruneH3DailyBeforeIR: any = {
+  usedParamSet: { day: true },
+  params: [
+    {
+      name: "day",
+      required: true,
+      transform: { type: "scalar" },
+      locs: [{ a: 49, b: 53 }],
+    },
+  ],
+  statement: "DELETE FROM service_request_h3_daily WHERE day < :day!",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * DELETE FROM service_request_h3_daily WHERE day < :day!
+ * ```
+ */
+export const pruneH3DailyBefore = new PreparedQuery<
+  IPruneH3DailyBeforeParams,
+  IPruneH3DailyBeforeResult
+>(pruneH3DailyBeforeIR);
+
+/** 'FindDaysForRequests' parameters type */
+export interface IFindDaysForRequestsParams {
+  ids: stringArray;
+}
+
+/** 'FindDaysForRequests' return type */
+export interface IFindDaysForRequestsResult {
+  day: Date | null;
+}
+
+/** 'FindDaysForRequests' query type */
+export interface IFindDaysForRequestsQuery {
+  params: IFindDaysForRequestsParams;
+  result: IFindDaysForRequestsResult;
+}
+
+const findDaysForRequestsIR: any = {
+  usedParamSet: { ids: true },
+  params: [
+    {
+      name: "ids",
+      required: true,
+      transform: { type: "scalar" },
+      locs: [{ a: 104, b: 108 }],
+    },
+  ],
+  statement:
+    "SELECT DISTINCT DATE(requested_datetime) AS day\n  FROM service_requests\n WHERE service_request_id = ANY(:ids!)",
+};
+
+/**
+ * Query generated from SQL:
+ * ```
+ * SELECT DISTINCT DATE(requested_datetime) AS day
+ *   FROM service_requests
+ *  WHERE service_request_id = ANY(:ids!)
+ * ```
+ */
+export const findDaysForRequests = new PreparedQuery<
+  IFindDaysForRequestsParams,
+  IFindDaysForRequestsResult
+>(findDaysForRequestsIR);
 
 /** 'CreateServiceRequests' parameters type */
 export interface ICreateServiceRequestsParams {

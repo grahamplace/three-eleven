@@ -7,6 +7,7 @@ import {
   monthlyBackfillScheduler,
   processBatchFunction,
 } from "@/inngest/functions/backfill-query-tags";
+import { EVENTS as ROLLUP_EVENTS } from "@/inngest/functions/rebuild-h3-rollup";
 
 vi.mock("@/lib/db", () => ({
   db: { query: vi.fn() },
@@ -133,7 +134,28 @@ describe("processBatchFunction", () => {
     const { step, result } = runBatch("y", 2);
 
     expect(await result).toMatchObject({ lastId: "z", done: true });
-    expect(step.sendEvent).not.toHaveBeenCalled();
+    expect(step.sendEvent).not.toHaveBeenCalledWith(
+      "trigger-next-batch",
+      expect.anything(),
+    );
+  });
+
+  it("kicks off a rollup rebuild once the last page is tagged", async () => {
+    vi.mocked(db.query).mockResolvedValueOnce({
+      rows: rows(["z"]),
+      rowCount: 1,
+    });
+    vi.mocked(replaceQueryTagsForMany).mockResolvedValueOnce([]);
+
+    const { step, result } = runBatch("y", 2);
+    await result;
+
+    // Retagging moves counts between query series, so the precomputed hexbin
+    // rollup has to follow.
+    expect(step.sendEvent).toHaveBeenCalledWith("trigger-rollup-rebuild", {
+      name: ROLLUP_EVENTS.REBUILD,
+      data: {},
+    });
   });
 
   it("stops on an empty page without touching the store", async () => {
@@ -148,6 +170,9 @@ describe("processBatchFunction", () => {
       done: true,
     });
     expect(replaceQueryTagsForMany).not.toHaveBeenCalled();
-    expect(step.sendEvent).not.toHaveBeenCalled();
+    expect(step.sendEvent).not.toHaveBeenCalledWith(
+      "trigger-next-batch",
+      expect.anything(),
+    );
   });
 });

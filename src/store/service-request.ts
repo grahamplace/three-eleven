@@ -1,4 +1,4 @@
-import { db, withTransaction } from "@/lib/db";
+import { db, withTransaction, type DbConnection } from "@/lib/db";
 import * as queries from "@/store/queries/service_request.queries";
 import * as tagQueries from "@/store/queries/service_request_query_tags.queries";
 import { ServiceRequest } from "@/entities";
@@ -6,7 +6,13 @@ import { supportedMediaDomains } from "@/lib/config";
 import { firstEntity } from "./utils";
 import { replaceQueryTagsForMany } from "./service-request-query-tags";
 import { h3CellsForPoint, type H3Resolution, type HexCount } from "@/lib/h3";
-import { toSfWallClock, toSfWallClockOrNull } from "@/lib/time";
+import { addDays, parseISO } from "date-fns";
+import {
+  toSfWallClock,
+  toSfWallClockOrNull,
+  formatDay,
+  sfToday,
+} from "@/lib/time";
 
 export async function getLatestUpdatedDatetimeFromPg() {
   const pgLatestUpdatedDatetime = await queries.getLatestUpdatedDatetime.run(
@@ -87,27 +93,56 @@ const toHexCounts = (
     r.h3_cell && r.count ? [[r.h3_cell, r.count] as HexCount] : [],
   );
 
-/** Request counts per H3 cell, aggregated in Postgres. */
+/**
+ * How far back the hexbin rollup is kept, in days.
+ *
+ * The date picker caps a window at 730 days, so a horizon past that covers
+ * every range that ends anywhere near today — which is all of them, in
+ * practice. Older windows fall back to counting raw rows, which is slow but
+ * rare, and keeping the rollup bounded keeps it at ~1GB instead of growing
+ * past the size of service_requests itself.
+ */
+export const ROLLUP_HORIZON_DAYS = 800;
+
+/** The oldest day the rollup covers, as yyyy-MM-dd. */
+export const rollupHorizonDay = (now: Date = new Date()) =>
+  formatDay(addDays(parseISO(sfToday(now)), -ROLLUP_HORIZON_DAYS));
+
+/**
+ * Request counts per H3 cell.
+ *
+ * Served from the daily rollup, which is what makes a long window cheap;
+ * windows reaching back past the horizon count raw rows instead. `queryId` is
+ * "" for the unfiltered map, which the rollup keeps as its own series
+ * alongside one per predefined query.
+ */
 export const countByH3Cell = async (
   resolution: H3Resolution,
   dateStart: string,
   dateEnd: string,
-) =>
-  toHexCounts(
-    await queries.countByH3Cell.run(
-      { resolution, date_start: dateStart, date_end: dateEnd },
-      db,
-    ),
-  );
+  queryId: string = "",
+) => {
+  if (dateStart < rollupHorizonDay()) {
+    return toHexCounts(
+      await (queryId
+        ? queries.countByH3CellForQuery.run(
+            {
+              query_id: queryId,
+              resolution,
+              date_start: dateStart,
+              date_end: dateEnd,
+            },
+            db,
+          )
+        : queries.countByH3Cell.run(
+            { resolution, date_start: dateStart, date_end: dateEnd },
+            db,
+          )),
+    );
+  }
 
-export const countByH3CellForQuery = async (
-  queryId: string,
-  resolution: H3Resolution,
-  dateStart: string,
-  dateEnd: string,
-) =>
-  toHexCounts(
-    await queries.countByH3CellForQuery.run(
+  return toHexCounts(
+    await queries.countH3DailyCells.run(
       {
         query_id: queryId,
         resolution,
@@ -117,6 +152,57 @@ export const countByH3CellForQuery = async (
       db,
     ),
   );
+};
+
+/**
+ * Recomputes the rollup for whole days, from whatever service_requests and
+ * query tags currently say.
+ *
+ * Recompute rather than increment: ingest re-upserts requests it has already
+ * seen, and a request's tags can change under it, so adding to a running
+ * count would drift.
+ */
+export const refreshH3DailyForDays = async (
+  days: string[],
+  conn: DbConnection = db,
+) => {
+  if (days.length === 0) return;
+  await queries.deleteH3DailyForDays.run({ days }, conn);
+  await queries.insertH3DailyForDays.run({ days }, conn);
+};
+
+/** Drops rollup days that have fallen past the horizon. */
+export const pruneH3Daily = async (before: string = rollupHorizonDay()) => {
+  await queries.pruneH3DailyBefore.run({ day: before }, db);
+  return before;
+};
+
+/** The days a batch of requests falls on, as yyyy-MM-dd. */
+export const findDaysForRequests = async (
+  ids: string[],
+  conn: DbConnection = db,
+) => {
+  if (ids.length === 0) return [];
+  const rows = await queries.findDaysForRequests.run({ ids }, conn);
+  return rows.flatMap((r) => (r.day ? [formatDay(r.day)] : []));
+};
+
+/**
+ * Recomputes the rollup for every day a batch of requests touches, ignoring
+ * days past the horizon: those are answered from raw rows and would only be
+ * pruned again tonight.
+ */
+export const refreshH3DailyForRequests = async (
+  ids: string[],
+  conn: DbConnection = db,
+) => {
+  const horizon = rollupHorizonDay();
+  const days = await findDaysForRequests(ids, conn);
+  return refreshH3DailyForDays(
+    days.filter((day) => day >= horizon),
+    conn,
+  );
+};
 
 export type ServiceRequestInput = Omit<
   ServiceRequest,
@@ -166,6 +252,12 @@ export const createMany = async (serviceRequests: ServiceRequestInput[]) => {
       tx,
     );
     await replaceQueryTagsForMany(serviceRequests, tx);
+    // Keep the hexbin rollup in step with the rows just written, in the same
+    // transaction: a map query never sees counts for a half-written batch.
+    await refreshH3DailyForRequests(
+      mappedRequests.map((r) => r.service_request_id),
+      tx,
+    );
     return result;
   });
 };
