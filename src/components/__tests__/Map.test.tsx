@@ -277,39 +277,46 @@ describe("MapComponent", () => {
     });
   });
 
-  it("prefetches the hexbin resolutions a zoom step away", async () => {
+  const allWarm = () =>
+    waitFor(() => {
+      expect(hexbinResolutions().sort()).toEqual(["10", "11", "7", "8", "9"]);
+    });
+
+  it("warms every other resolution in the background, nearest zoom step first", async () => {
     searchParams = new URLSearchParams("mode=hexabin");
 
     renderMap();
 
-    await waitFor(() => {
-      expect(hexbinResolutions()).toEqual(
-        expect.arrayContaining(["9", "8", "10"]),
-      );
-    });
+    await allWarm();
+    // Visible resolution first, then outwards from it.
+    expect(hexbinResolutions()).toEqual(["9", "8", "10", "7", "11"]);
   });
 
-  it("serves a prefetched resolution from cache instead of refetching", async () => {
+  it("zooms between warmed resolutions without touching the network", async () => {
     searchParams = new URLSearchParams("mode=hexabin");
 
     renderMap();
 
-    await waitFor(() => {
-      expect(hexbinResolutions()).toEqual(
-        expect.arrayContaining(["9", "8", "10"]),
-      );
-    });
+    await allWarm();
     const before = fetchMock.mock.calls.length;
 
-    // Zoom 13.5 maps to resolution 10, which is already warm; the only new
-    // requests are the prefetches around it (11), never a refetch of 10.
-    setZoom(13.5);
+    setZoom(13.5); // resolution 10
+    setZoom(8); // resolution 7
+    setZoom(16); // resolution 11
 
     await waitFor(() => {
-      expect(hexbinResolutions()).toContain("11");
+      expect(screen.queryByText("Loading data...")).not.toBeInTheDocument();
     });
-    expect(hexbinResolutions().filter((r) => r === "10")).toHaveLength(1);
-    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(before + 1);
+    expect(fetchMock.mock.calls.length).toBe(before);
+  });
+
+  it("fetches each resolution exactly once for a filter set", async () => {
+    searchParams = new URLSearchParams("mode=hexabin");
+
+    renderMap();
+
+    await allWarm();
+    expect(fetchMock.mock.calls).toHaveLength(5);
   });
 
   it("does not refetch points when zooming, only hexbins are per-resolution", async () => {

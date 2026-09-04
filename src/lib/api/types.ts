@@ -21,6 +21,10 @@ export const SERVICE_REQUESTS_TAG = "service-requests";
 /**
  * Data changes once a day (nightly ingest), so responses can be served from
  * the CDN and the Next data cache. `revalidateTag` after ingest busts both.
+ *
+ * `max-age` is what the browser gets (Vercel keeps `s-maxage` for itself), and
+ * without it the client revalidates every hexbin resolution on every zoom even
+ * though the payload cannot have changed.
  */
 export const CACHE_CONTROL =
-  "public, s-maxage=3600, stale-while-revalidate=86400";
+  "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
