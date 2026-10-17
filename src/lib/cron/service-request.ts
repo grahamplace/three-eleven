@@ -73,7 +73,11 @@ async function fetchDataChunk(
 
   const result = await sfdataClient
     .query(ResourceId.SERVICE_REQUESTS)
-    .where("updated_datetime", ">", formattedDate)
+    // Inclusive: upstream timestamps are only to the second and bulk updates
+    // share them (~100 rows in one second on 2026-10-01). With ">", a run that
+    // stopped partway through a second would skip the rest of it for good.
+    // Re-upserting the rows already held at the watermark is harmless.
+    .where("updated_datetime", ">=", formattedDate)
     .orderBy("updated_datetime", "asc")
     .limit(BATCH_SIZE)
     .offset(offset)
@@ -183,8 +187,11 @@ export async function ingestServiceRequests({
   return { totalProcessed, batches, hitBatchCap };
 }
 
-export function warnBatchCap(maxBatches: number) {
-  console.warn(
+export function warnBatchCap(
+  maxBatches: number,
+  log: (message: string) => void = console.warn,
+) {
+  log(
     `Ingest stopped at the ${maxBatches}-batch cap with more rows upstream; ` +
       `the next run resumes from the new watermark. If this happens every run, ingestion is falling behind.`,
   );

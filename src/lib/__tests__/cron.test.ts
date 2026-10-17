@@ -1,17 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fromSfWallClock } from "@/lib/time";
 
-const { sodaExecute, sodaOffset } = vi.hoisted(() => ({
+const { sodaExecute, sodaOffset, sodaWhere } = vi.hoisted(() => ({
   sodaExecute: vi.fn(),
   sodaOffset: vi.fn(),
+  sodaWhere: vi.fn(),
 }));
 
 // Chainable stand-in for the SODA client; only execute() and offset() matter.
 vi.mock("@/lib/sfdata", () => {
   const chain: Record<string, unknown> = {};
-  for (const m of ["query", "where", "orderBy", "limit"]) {
+  for (const m of ["query", "orderBy", "limit"]) {
     chain[m] = vi.fn(() => chain);
   }
+  chain.where = vi.fn((...args: unknown[]) => {
+    sodaWhere(...args);
+    return chain;
+  });
   chain.offset = vi.fn((n: number) => {
     sodaOffset(n);
     return chain;
@@ -232,9 +237,8 @@ describe("cron", () => {
       }));
 
     it("pages by offset until a short page, then advances the watermark", async () => {
-      const { createMany, refreshH3DailyForDays } = await import(
-        "@/store/service-request"
-      );
+      const { createMany, refreshH3DailyForDays } =
+        await import("@/store/service-request");
       const { setLatestUpdatedDatetime } = await import("@/store/metadata");
       sodaExecute
         .mockResolvedValueOnce({ data: page(1000, "a") })
@@ -279,6 +283,20 @@ describe("cron", () => {
       expect(warn).toHaveBeenCalledWith(expect.stringMatching(/batch cap/));
       // The watermark still advances so the next run resumes, not repeats.
       expect(setLatestUpdatedDatetime).toHaveBeenCalledTimes(1);
+    });
+
+    it("includes rows at the watermark itself, so a split second is not skipped", async () => {
+      sodaExecute.mockResolvedValueOnce({ data: [] });
+      vi.spyOn(console, "info").mockImplementation(() => {});
+
+      await ingestServiceRequests({ delayMs: 0 });
+
+      // 2024-01-01T08:00:00Z is midnight in SF.
+      expect(sodaWhere).toHaveBeenCalledWith(
+        "updated_datetime",
+        ">=",
+        "2024-01-01T00:00:00.000",
+      );
     });
 
     it("handles no new rows without writing", async () => {

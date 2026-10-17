@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ingestBatch } from "@/lib/cron/service-request";
+import { ingestBatch, warnBatchCap } from "@/lib/cron/service-request";
 import { setLatestUpdatedDatetime } from "@/store/metadata";
 import { refreshH3DailyForDays } from "@/store/service-request";
 import {
@@ -95,6 +95,10 @@ describe("updateServiceRequests", () => {
     expect(ingestBatch).toHaveBeenCalledTimes(MAX_BATCHES);
     expect(setLatestUpdatedDatetime).toHaveBeenCalledTimes(1);
     expect(result.hitBatchCap).toBe(true);
+    // Routed through Inngest's logger, which drops repeats on step replay.
+    const [, log] = vi.mocked(warnBatchCap).mock.calls[0];
+    log!("capped");
+    expect(logger.warn).toHaveBeenCalledWith("capped");
   });
 
   it("skips the rollup when nothing new came in", async () => {

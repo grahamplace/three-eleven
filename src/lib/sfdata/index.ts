@@ -5,7 +5,8 @@ export enum ResourceId {
 }
 
 const sfdataClient = new SodaClient({
-  domain: "data.sfgov.org",
+  // data.sfgov.org now redirects here; skip the extra hop on every page.
+  domain: "data.sf.gov",
 });
 
 export default sfdataClient;
