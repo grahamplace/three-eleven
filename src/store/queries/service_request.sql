@@ -142,11 +142,6 @@ SELECT qt.query_id,
 /* @name PruneH3DailyBefore */
 DELETE FROM service_request_h3_daily WHERE day < :day!;
 
-/* @name FindDaysForRequests */
-SELECT DISTINCT DATE(requested_datetime) AS day
-  FROM service_requests
- WHERE service_request_id = ANY(:ids!);
-
 /* @name CreateServiceRequests
    @param requests -> ((
      service_request_id,
