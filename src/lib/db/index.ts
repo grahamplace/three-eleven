@@ -22,6 +22,20 @@ export const env = envobj(
   },
 );
 
+/**
+ * Spells out the SSL mode pg already uses. pg treats `prefer`, `require` and
+ * `verify-ca` as `verify-full` today, warns about it on every cold start, and
+ * will switch them to weaker libpq semantics in pg 9. The Neon integration
+ * manages DATABASE_URL (with `sslmode=require`), so pin it here rather than in
+ * the Vercel env, where the integration could overwrite it.
+ */
+export function withExplicitSslMode(connectionString: string): string {
+  return connectionString.replace(
+    /([?&]sslmode=)(prefer|require|verify-ca)(?=&|$)/,
+    "$1verify-full",
+  );
+}
+
 type QueryParams = readonly unknown[];
 
 /**
@@ -43,7 +57,9 @@ let pool: pg.Pool | null = null;
 
 function getPool(): pg.Pool {
   if (!pool) {
-    pool = new Pool({ connectionString: env.DATABASE_URL });
+    pool = new Pool({
+      connectionString: withExplicitSslMode(env.DATABASE_URL),
+    });
     // Idle clients can be dropped by the server; without a listener the
     // resulting 'error' event would crash the process.
     pool.on("error", (err) => {

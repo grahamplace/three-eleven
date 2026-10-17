@@ -110,4 +110,28 @@ describe("lib/db", () => {
     expect(mockPool.end).toHaveBeenCalledTimes(1);
     expect(PoolCtor).toHaveBeenCalledTimes(2);
   });
+
+  describe("withExplicitSslMode", () => {
+    it("pins the modes pg already treats as verify-full", async () => {
+      const { withExplicitSslMode } = await import("@/lib/db");
+      for (const mode of ["prefer", "require", "verify-ca"]) {
+        expect(
+          withExplicitSslMode(`postgres://u:p@host/db?sslmode=${mode}`),
+        ).toBe("postgres://u:p@host/db?sslmode=verify-full");
+      }
+    });
+
+    it("keeps other parameters and leaves other modes alone", async () => {
+      const { withExplicitSslMode } = await import("@/lib/db");
+      expect(
+        withExplicitSslMode(
+          "postgres://h/db?channel_binding=require&sslmode=require&x=1",
+        ),
+      ).toBe("postgres://h/db?channel_binding=require&sslmode=verify-full&x=1");
+      expect(withExplicitSslMode("postgres://h/db?sslmode=disable")).toBe(
+        "postgres://h/db?sslmode=disable",
+      );
+      expect(withExplicitSslMode("postgres://h/db")).toBe("postgres://h/db");
+    });
+  });
 });
