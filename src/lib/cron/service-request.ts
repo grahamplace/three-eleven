@@ -1,4 +1,9 @@
-import { createMany } from "@/store/service-request";
+import {
+  createMany,
+  daysForRequests,
+  refreshH3DailyForDays,
+  rollupChunks,
+} from "@/store/service-request";
 import {
   getLatestUpdatedDatetime,
   setLatestUpdatedDatetime,
@@ -20,10 +25,15 @@ const env = envobj(
 
 // 50k is maximum allowed by SODA 2.1
 // 10k causes issues with Postgres bulk insert parameter limits
-const BATCH_SIZE = 1000;
+export const BATCH_SIZE = 1000;
 const DELAY_MS = 500;
 
-// It takes ~1.5s per batch. 20 batches is ~30s. Vercel free plan has max timeout limit of 60s. In dev, can run more batches per run.
+/** Days per rollup refresh. One chunk is a few seconds of Postgres work. */
+export const ROLLUP_CHUNK_DAYS = 30;
+
+// It takes ~1.5s per batch, so this whole loop only fits one function
+// invocation for small runs. The nightly Inngest job runs each batch as its
+// own step instead; this path is for scripts/scrape-data.ts.
 const MAX_BATCHES_PER_RUN = env.ENV === "development" ? 1000 : 20;
 
 // Type for raw API response from SF 311 data. All datetimes are Socrata
@@ -72,6 +82,36 @@ async function fetchDataChunk(
   return result.data;
 }
 
+export type BatchResult = {
+  /** Rows fetched from SODA; fewer than BATCH_SIZE means nothing is left. */
+  count: number;
+  /** Days the rows fall on, for refreshing the hexbin rollup afterwards. */
+  days: string[];
+};
+
+/**
+ * Fetches and upserts one page of requests updated after `watermark`.
+ *
+ * Pagination is by offset, so callers must pass the same watermark for every
+ * page of a run. The rollup is left to the caller, once all pages are in.
+ */
+export async function ingestBatch(
+  watermark: Date,
+  offset: number,
+): Promise<BatchResult> {
+  console.info(
+    `Fetching batch at offset ${offset} (updated after ${toSfWallClock(watermark)})`,
+  );
+  const rawData = await fetchDataChunk(offset, watermark);
+  if (rawData.length === 0) {
+    return { count: 0, days: [] };
+  }
+
+  const requests = transformData(rawData);
+  await createMany(requests);
+  return { count: rawData.length, days: daysForRequests(requests) };
+}
+
 export type IngestOptions = {
   /** Upper bound on batches per run; the default fits a serverless timeout. */
   maxBatches?: number;
@@ -88,6 +128,7 @@ export type IngestSummary = {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Runs a whole ingest in one process: every batch, then the rollup. */
 export async function ingestServiceRequests({
   maxBatches = MAX_BATCHES_PER_RUN,
   delayMs = DELAY_MS,
@@ -95,9 +136,9 @@ export async function ingestServiceRequests({
   // Pagination is by offset, so the watermark must stay fixed across pages.
   const latestUpdatedDatetime = await getLatestUpdatedDatetime();
   let batches = 0;
-  let offset = 0;
   let totalProcessed = 0;
   let hitBatchCap = false;
+  const days: string[] = [];
 
   for (;;) {
     if (batches >= maxBatches) {
@@ -105,21 +146,20 @@ export async function ingestServiceRequests({
       break;
     }
 
-    console.info(
-      `Fetching batch ${batches + 1} at offset ${offset} (updated after ${toSfWallClock(latestUpdatedDatetime)})`,
+    const batch = await ingestBatch(
+      latestUpdatedDatetime,
+      batches * BATCH_SIZE,
     );
-    const rawData = await fetchDataChunk(offset, latestUpdatedDatetime);
-    if (rawData.length === 0) {
+    if (batch.count === 0) {
       break;
     }
 
-    await createMany(transformData(rawData));
-    totalProcessed += rawData.length;
+    totalProcessed += batch.count;
     batches++;
-    offset += BATCH_SIZE;
+    days.push(...batch.days);
     console.info(`Processed ${totalProcessed} records so far`);
 
-    if (rawData.length < BATCH_SIZE) {
+    if (batch.count < BATCH_SIZE) {
       break; // short page: nothing left upstream
     }
     if (delayMs > 0) await sleep(delayMs);
@@ -129,17 +169,25 @@ export async function ingestServiceRequests({
   // this run have a later updated_datetime and are picked up next run.
   await setLatestUpdatedDatetime();
 
+  for (const chunk of rollupChunks(days, ROLLUP_CHUNK_DAYS)) {
+    await refreshH3DailyForDays(chunk);
+  }
+
   if (hitBatchCap) {
-    console.warn(
-      `Ingest stopped at the ${maxBatches}-batch cap with more rows upstream; ` +
-        `the next run resumes from the new watermark. If this happens every run, ingestion is falling behind.`,
-    );
+    warnBatchCap(maxBatches);
   }
   console.info(
     `Ingest complete: ${totalProcessed} records in ${batches} batches${hitBatchCap ? " (cap reached)" : ""}`,
   );
 
   return { totalProcessed, batches, hitBatchCap };
+}
+
+export function warnBatchCap(maxBatches: number) {
+  console.warn(
+    `Ingest stopped at the ${maxBatches}-batch cap with more rows upstream; ` +
+      `the next run resumes from the new watermark. If this happens every run, ingestion is falling behind.`,
+  );
 }
 
 export function transformData(

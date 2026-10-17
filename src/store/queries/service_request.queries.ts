@@ -768,49 +768,6 @@ export const pruneH3DailyBefore = new PreparedQuery<
   IPruneH3DailyBeforeResult
 >(pruneH3DailyBeforeIR);
 
-/** 'FindDaysForRequests' parameters type */
-export interface IFindDaysForRequestsParams {
-  ids: stringArray;
-}
-
-/** 'FindDaysForRequests' return type */
-export interface IFindDaysForRequestsResult {
-  day: Date | null;
-}
-
-/** 'FindDaysForRequests' query type */
-export interface IFindDaysForRequestsQuery {
-  params: IFindDaysForRequestsParams;
-  result: IFindDaysForRequestsResult;
-}
-
-const findDaysForRequestsIR: any = {
-  usedParamSet: { ids: true },
-  params: [
-    {
-      name: "ids",
-      required: true,
-      transform: { type: "scalar" },
-      locs: [{ a: 104, b: 108 }],
-    },
-  ],
-  statement:
-    "SELECT DISTINCT DATE(requested_datetime) AS day\n  FROM service_requests\n WHERE service_request_id = ANY(:ids!)",
-};
-
-/**
- * Query generated from SQL:
- * ```
- * SELECT DISTINCT DATE(requested_datetime) AS day
- *   FROM service_requests
- *  WHERE service_request_id = ANY(:ids!)
- * ```
- */
-export const findDaysForRequests = new PreparedQuery<
-  IFindDaysForRequestsParams,
-  IFindDaysForRequestsResult
->(findDaysForRequestsIR);
-
 /** 'CreateServiceRequests' parameters type */
 export interface ICreateServiceRequestsParams {
   requests: readonly {

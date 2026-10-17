@@ -22,6 +22,9 @@ vi.mock("@/lib/sfdata", () => {
 
 vi.mock("@/store/service-request", () => ({
   createMany: vi.fn(async () => []),
+  daysForRequests: vi.fn(() => ["2024-01-15"]),
+  rollupChunks: vi.fn((days: string[]) => [[...new Set(days)]]),
+  refreshH3DailyForDays: vi.fn(async () => {}),
 }));
 
 vi.mock("@/store/metadata", () => ({
@@ -229,7 +232,9 @@ describe("cron", () => {
       }));
 
     it("pages by offset until a short page, then advances the watermark", async () => {
-      const { createMany } = await import("@/store/service-request");
+      const { createMany, refreshH3DailyForDays } = await import(
+        "@/store/service-request"
+      );
       const { setLatestUpdatedDatetime } = await import("@/store/metadata");
       sodaExecute
         .mockResolvedValueOnce({ data: page(1000, "a") })
@@ -242,6 +247,9 @@ describe("cron", () => {
       expect(sodaOffset.mock.calls.map((c) => c[0])).toEqual([0, 1000]);
       expect(createMany).toHaveBeenCalledTimes(2);
       expect(setLatestUpdatedDatetime).toHaveBeenCalledTimes(1);
+      // Each touched day is recomputed once, after every batch is in.
+      expect(refreshH3DailyForDays).toHaveBeenCalledTimes(1);
+      expect(refreshH3DailyForDays).toHaveBeenCalledWith(["2024-01-15"]);
       expect(summary).toEqual({
         totalProcessed: 1300,
         batches: 2,

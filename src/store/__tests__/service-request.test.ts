@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   countByH3Cell,
   createMany,
+  daysForRequests,
   find,
   findByQueryId,
   pruneH3Daily,
   refreshH3DailyForDays,
+  rollupChunks,
   rollupHorizonDay,
 } from "@/store/service-request";
 import { withTransaction } from "@/lib/db";
@@ -35,7 +37,6 @@ vi.mock("@/store/queries/service_request.queries", () => ({
   pruneH3DailyBefore: { run: vi.fn() },
   deleteH3DailyForDays: { run: vi.fn() },
   insertH3DailyForDays: { run: vi.fn() },
-  findDaysForRequests: { run: vi.fn(async () => []) },
 }));
 
 vi.mock("@/store/queries/service_request_query_tags.queries", () => ({
@@ -142,44 +143,40 @@ describe("store/service-request", () => {
   });
 
   describe("hexbin rollup", () => {
-    it("recomputes the rollup for the days a batch touches, on the same transaction", async () => {
+    it("leaves the rollup alone when writing a batch", async () => {
       vi.mocked(queries.createServiceRequests.run).mockResolvedValue([]);
-      const today = new Date();
-      vi.mocked(queries.findDaysForRequests.run).mockResolvedValue([
-        { day: today },
-      ]);
 
       await createMany([row] as any);
 
-      expect(queries.findDaysForRequests.run).toHaveBeenCalledWith(
-        { ids: ["1"] },
-        tx,
-      );
-      const days = [formatDay(today)];
-      expect(queries.deleteH3DailyForDays.run).toHaveBeenCalledWith(
-        { days },
-        tx,
-      );
-      expect(queries.insertH3DailyForDays.run).toHaveBeenCalledWith(
-        { days },
-        tx,
-      );
+      expect(queries.deleteH3DailyForDays.run).not.toHaveBeenCalled();
+      expect(queries.insertH3DailyForDays.run).not.toHaveBeenCalled();
     });
 
-    it("skips days that have already aged past the rollup horizon", async () => {
-      vi.mocked(queries.createServiceRequests.run).mockResolvedValue([]);
-      const today = new Date();
-      vi.mocked(queries.findDaysForRequests.run).mockResolvedValue([
-        { day: new Date("2009-06-15T00:00:00") },
-        { day: today },
-      ]);
+    it("finds the SF calendar day of each request, once per day", () => {
+      expect(
+        daysForRequests([
+          // 03:00 UTC on the 5th is still the evening of the 4th in SF.
+          { requested_datetime: new Date("2024-07-05T03:00:00Z") },
+          { requested_datetime: new Date("2024-07-04T19:00:00Z") },
+          { requested_datetime: new Date("2024-07-05T19:00:00Z") },
+        ]),
+      ).toEqual(["2024-07-04", "2024-07-05"]);
+    });
 
-      await createMany([row] as any);
+    it("chunks touched days newest first, deduped, inside the horizon", () => {
+      const horizon = rollupHorizonDay();
+      const recent = (n: number) =>
+        formatDay(new Date(Date.now() - n * 86_400_000));
 
-      expect(queries.deleteH3DailyForDays.run).toHaveBeenCalledWith(
-        { days: [formatDay(today)] },
-        tx,
+      const chunks = rollupChunks(
+        [recent(3), "2009-06-15", recent(1), recent(3), recent(2), horizon],
+        2,
       );
+
+      expect(chunks).toEqual([
+        [recent(1), recent(2)],
+        [recent(3), horizon],
+      ]);
     });
 
     it("prunes the rollup back to the horizon", async () => {

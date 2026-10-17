@@ -177,31 +177,31 @@ export const pruneH3Daily = async (before: string = rollupHorizonDay()) => {
   return before;
 };
 
-/** The days a batch of requests falls on, as yyyy-MM-dd. */
-export const findDaysForRequests = async (
-  ids: string[],
-  conn: DbConnection = db,
-) => {
-  if (ids.length === 0) return [];
-  const rows = await queries.findDaysForRequests.run({ ids }, conn);
-  return rows.flatMap((r) => (r.day ? [formatDay(r.day)] : []));
-};
+/** The SF calendar days a batch of requests falls on, as yyyy-MM-dd. */
+export const daysForRequests = (
+  requests: Pick<ServiceRequestInput, "requested_datetime">[],
+) => [
+  ...new Set(
+    requests.map((r) => toSfWallClock(r.requested_datetime).slice(0, 10)),
+  ),
+];
 
 /**
- * Recomputes the rollup for every day a batch of requests touches, ignoring
- * days past the horizon: those are answered from raw rows and would only be
- * pruned again tonight.
+ * Groups the days an ingest touched into rollup refreshes of `size` days,
+ * newest first, ignoring days past the horizon: those are answered from raw
+ * rows and would only be pruned again tonight.
  */
-export const refreshH3DailyForRequests = async (
-  ids: string[],
-  conn: DbConnection = db,
-) => {
+export const rollupChunks = (days: string[], size: number): string[][] => {
   const horizon = rollupHorizonDay();
-  const days = await findDaysForRequests(ids, conn);
-  return refreshH3DailyForDays(
-    days.filter((day) => day >= horizon),
-    conn,
-  );
+  const inHorizon = [...new Set(days)]
+    .filter((day) => day >= horizon)
+    .sort()
+    .reverse();
+  const chunks: string[][] = [];
+  for (let i = 0; i < inHorizon.length; i += size) {
+    chunks.push(inHorizon.slice(i, i + size));
+  }
+  return chunks;
 };
 
 export type ServiceRequestInput = Omit<
@@ -212,6 +212,10 @@ export type ServiceRequestInput = Omit<
 /**
  * Upserts a batch of service requests and rewrites their query tags in one
  * transaction, so a failure in either step leaves the database unchanged.
+ *
+ * Does not touch the hexbin rollup: recomputing a day is far more expensive
+ * than writing a batch, so callers refresh the days they touched once, after
+ * all their batches (see daysForRequests and rollupChunks).
  */
 export const createMany = async (serviceRequests: ServiceRequestInput[]) => {
   if (serviceRequests.length === 0) {
@@ -252,12 +256,6 @@ export const createMany = async (serviceRequests: ServiceRequestInput[]) => {
       tx,
     );
     await replaceQueryTagsForMany(serviceRequests, tx);
-    // Keep the hexbin rollup in step with the rows just written, in the same
-    // transaction: a map query never sees counts for a half-written batch.
-    await refreshH3DailyForRequests(
-      mappedRequests.map((r) => r.service_request_id),
-      tx,
-    );
     return result;
   });
 };
