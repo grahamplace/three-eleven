@@ -59,16 +59,16 @@ export const updateServiceRequests = inngest.createFunction(
     // reach this run have a later updated_datetime and are picked up next run.
     await step.run("advance-watermark", () => setLatestUpdatedDatetime());
 
-    if (hitBatchCap) warnBatchCap(MAX_BATCHES);
+    // Inngest's logger, not console: the function body re-runs once per step,
+    // and only the logger drops the repeats from those replays.
+    if (hitBatchCap) warnBatchCap(MAX_BATCHES, (msg) => logger.warn(msg));
     logger.info(`Ingested ${totalProcessed} records`);
 
     // Recompute each touched day once, after every batch is in, rather than
     // once per batch that touches it.
     const chunks = rollupChunks(days, ROLLUP_CHUNK_DAYS);
     for (const [i, chunk] of chunks.entries()) {
-      await step.run(`refresh-rollup-${i}`, () =>
-        refreshH3DailyForDays(chunk),
-      );
+      await step.run(`refresh-rollup-${i}`, () => refreshH3DailyForDays(chunk));
     }
 
     // The rollup only covers a trailing window; drop what has aged out of it.
